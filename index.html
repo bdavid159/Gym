@@ -971,10 +971,28 @@
                         <div className="pt-10 pb-4 px-5 bg-white shadow-sm rounded-b-3xl z-10 relative">
                             <button onClick={() => setActiveModule('hub')} className="absolute top-4 left-4 bg-gray-100 text-gray-800 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">← Volver</button>
                             <div className="flex justify-between items-center mt-6">
-                                <div>
+                                                                <div>
                                     <h2 className="text-3xl font-black text-gray-900 tracking-tight">💧 Hidratación</h2>
-                                    <p className="text-xs text-gray-500 font-bold mt-1">Protocolo 15 Vasos (3.75L)</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <p className="text-xs text-gray-500 font-bold">Protocolo 15 Vasos</p>
+                                        <button onClick={() => {
+                                            if ("Notification" in window) {
+                                                Notification.requestPermission().then(perm => {
+                                                    if (perm === "granted") {
+                                                        new Notification("¡Alarmas Activas! 💧", { body: "Te avisaré cuando toque beber agua." });
+                                                    } else {
+                                                        alert("Debes permitir las notificaciones en los Ajustes de tu teléfono.");
+                                                    }
+                                                });
+                                            } else {
+                                                alert("Tu navegador no soporta notificaciones web.");
+                                            }
+                                        }} className="text-[9px] bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded-full font-black uppercase active:scale-95 transition-transform shadow-sm">
+                                            🔔 Activar Avisos
+                                        </button>
+                                    </div>
                                 </div>
+
                                 <input type="date" value={recordDate} onChange={(e) => setRecordDate(e.target.value)} className="bg-gray-100 rounded-xl p-2 text-xs font-bold outline-none"/>
                             </div>
                             
@@ -1160,10 +1178,11 @@
                 {
                     activeModule === 'gym' && (
                             <>
-                  {/* Botón Flotante para volver al Menú Principal */}
-                  <button onClick={() => setActiveModule('hub')} className="absolute top-4 left-4 z-[60] bg-gray-900/50 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border border-white/20 shadow-lg">
-                    ← Volver al Hub
+                  {/* Botón Flotante (Burbuja) para volver al Menú Principal */}
+                  <button onClick={() => setActiveModule('hub')} className="fixed bottom-28 left-5 z-[60] bg-gray-900/80 backdrop-blur-md text-white w-12 h-12 rounded-full flex items-center justify-center text-xl border border-white/20 shadow-[0_4px_15px_rgba(0,0,0,0.3)] transition-transform active:scale-90">
+                    🏠
                   </button>
+
                 {activeTab === 'dashboard' && (
                     <div className="flex-1 p-5 pb-32 overflow-y-auto bg-[#f2f2f7] hide-scrollbar">
                         <h1 className="text-3xl font-black tracking-tight mb-4">Compendio 4.0</h1>
