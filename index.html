@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SincroFlex 9.0 - Motor 4.0 Élite</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #f2f2f7; margin: 0; padding: 0; overscroll-behavior-y: none; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1c1c1e; }
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .set-row { transition: all 0.2s ease-in-out; }
+        @keyframes slideUp { 0% { opacity: 0; transform: translateY(100%); } 100% { opacity: 1; transform: translateY(0); } }
+        .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        select.custom-select { 
+            appearance: none; 
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%238E8E93%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); 
+            background-repeat: no-repeat; background-position: right 10px top 50%; background-size: 10px auto; 
+        }
+    </style>
+        <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SincroFlex">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3105/3105807.png">
+
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+      import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBeL6H8MljTKIzZfKDdtZ88Tmp8KGbGkrk",
+        authDomain: "gimnasio-8d83c.firebaseapp.com",
+        projectId: "gimnasio-8d83c",
+        storageBucket: "gimnasio-8d83c.firebasestorage.app",
+        messagingSenderId: "970497489138",
+        appId: "1:970497489138:web:ecdb0b4d90e312c4c5f86b"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      window.fsDb = db;
+      window.fsDoc = doc;
+      window.fsGetDoc = getDoc;
+      window.fsSetDoc = setDoc;
+      window.fsUpdateDoc = updateDoc;
+      window.dispatchEvent(new Event('firebaseIniciado'));
+    </script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const rpeDescriptions = {
+            10: { title: "Fallo Absoluto", desc: "No entra ni 1 rep más" },
+            9.5: { title: "Fallo casi absoluto", desc: "Tal vez 1 rep dudosa" },
+            9: { title: "Esfuerzo muy duro", desc: "1 repetición en reserva" },
+            8.5: { title: "Esfuerzo duro", desc: "1 o 2 reps en reserva" },
+            8: { title: "Esfuerzo moderado duro", desc: "2 reps en reserva" },
+            7.5: { title: "Esfuerzo moderado", desc: "2 o 3 reps en reserva" },
+            7: { title: "Esfuerzo moderado", desc: "3 reps en reserva" },
+            6: { title: "Calentamiento", desc: "Muchas reps en reserva" }
+        };
+        const rpeValues = [6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
+
+        const BARBELLS = {
+            "none": { name: "Sin Barra / Máquina", weightKg: 0, weightLbs: 0 },
+            "mancuernas": { name: "Mancuernas (Par)", weightKg: 0, weightLbs: 0 },
+            "larga_20": { name: "Barra Olímpica (20kg)", weightKg: 20, weightLbs: 45 },
+            "corta_10": { name: "Barra Corta / Hip Thrust", weightKg: 10, weightLbs: 22 },
+            "barra_z": { name: "Barra Z (EZ Curl)", weightKg: 8, weightLbs: 17 },
+            "smith": { name: "Multipower / Smith", weightKg: 10, weightLbs: 22 }
+        };
+
+        const initialRoutinesMap = {
+            "LUN_AM": { name: "LUNES: Asalto Inferior 1", exercises: ["ext_piernas", "prensa", "rdl", "curl_femoral", "pant_smith", "pant_sentado"] },
+            "MAR_AM": { name: "MARTES: Torso 1 (Armadura)", exercises: ["press_inclinado", "remo_sentado", "press_plano", "jalon_prono", "pec_deck", "face_pulls", "triceps_polea", "curl_biceps"] },
+            "MIE_AM": { name: "MIÉRCOLES: Glúteo Élite", exercises: ["hip_thrust", "abduccion", "aduccion", "bulgaras", "hiperextensiones", "patada_gluteo", "rematador"] },
+            "JUE_AM": { name: "JUEVES: Torso 2 (Hombros 3D)", exercises: ["press_militar", "jalon_neutro", "elev_y", "cruces_polea", "triceps_copa", "curl_polea"] },
+            "VIE_PM": { name: "VIERNES PM: Asalto Inferior 2", exercises: ["ext_piernas", "prensa", "rdl", "curl_femoral", "pant_smith", "pant_sentado"] },
+            "LUN_MAR_PM": { name: "PM: Lunes/Martes (Cardio/Core)", exercises: ["cardio_zona2", "core_circuito", "rehab_pm"] },
+            "MIE_PM": { name: "PM: MIÉRCOLES (Flush Láctico)", exercises: ["flush_lactico", "core_dinamico", "descompresion"] },
+            "JUE_PM": { name: "PM: JUEVES (HIIT Metabólico)", exercises: ["cardio_hiit", "core_circuito", "rehab_pm"] }
+        };
+
+        const generateInitialDb = () => ({
+          esposa: {
+            ext_piernas: { id: 'ext_piernas', name: '1A. Extensión Piernas', type: 'metabolico', equipType: 'pesas', supersetGroup: 'DIA1_G1', warmupSets: 1, targetSets: 3, targetRepsObj: '8-12', tempo: '2-0-2-0', intensity: 'drop', notes: 'Drop Set en Serie 3. Directo a Prensa.', history: [] },
+            prensa: { id: 'prensa', name: '1B. Prensa de Piernas', type: 'metabolico', equipType: 'pesas', supersetGroup: 'DIA1_G1', warmupSets: 0, targetSets: 3, targetRepsObj: '8-12', tempo: '2-0-2-0', intensity: null, notes: 'Superserie inmediata desde Extensión.', history: [] },
+            rdl: { id: 'rdl', name: '2. Peso Muerto Rumano', type: 'metabolico', equipType: 'pesas', warmupSets: 1, targetSets: 3, targetRepsObj: '8-12', tempo: '1-0-3-1', intensity: 'partial', notes: 'Parciales en Serie 3.', history: [] },
+            curl_femoral: { id: 'curl_femoral', name: '3. Curl Femoral', type: 'metabolico', equipType: 'pesas', warmupSets: 0, targetSets: 3, targetRepsObj: '8-12', tempo: '1-1-3-0', intensity: 'drop', notes: 'Drop Set en Serie 3.', history: [] },
+            pant_smith: { id: 'pant_smith', name: '4. Pantorrillas Smith', type: 'metabolico', equipType: 'pesas', warmupSets: 0, targetSets: 3, targetRepsObj: '10-15', tempo: '1-1-3-0', intensity: null, notes: '', history: [] },
+            pant_sentado: { id: 'pant_sentado', name: '5. Sóleo Sentado', type: 'metabolico', equipType: 'pesas', warmupSets: 0, targetSets: 3, targetRepsObj: '15-20', tempo: '1-1-2-0', intensity: 'drop', notes: 'Drop Set en Serie 3.', history: [] },
+            
+            press_inclinado: { id: 'press_inclinado', name: '1A. Press Inclinado', type: 'metabolico', equipType: 'pesas', supersetGroup: 'DIA2_G1', warmupSets: 1, targetSets: 3, targetRepsObj: '10-12', tempo: '2-0-2-0', intensity: null, notes: '', history: [] },
+            remo_sentado: { id: 'remo_sentado', name: '1B. Remo Sentado', type: 'metabolico', equipType: 'pesas', supersetGroup: 'DIA2_G1', warmupSets: 0, targetSets: 3, targetRepsObj: '10-12', tempo: '1-2-3-0', intensity: null, notes: '', history: [] },
+            press_plano: { id: 'press_plano', name: '2A. Press Plano', type: 'metabolico', equipType: 'pesas', supersetGroup: 'DIA2_G2', warmupSets: 0, targetSets: 3, targetRepsObj: '10-12', tempo: '2-0-2-0', intensity: null, notes: '', history: [] },
+            jalon_prono: { id: 'jalon_prono', name: '2B. Jalón Polea Alta', type: 'metabolico', equipType: 'pesas', supersetGroup: 'DIA2_G2', warmupSets: 0, targetSets: 3, targetRepsObj: '12-15', tempo: '1-1-3-0', intensity: null, notes: '', history: [] },
+            pec_deck: { id: 'pec_deck', name: '3A. Pec-Deck', type: 'metabolico', equipType: 'pesas', supersetGroup: 'DIA2_G3', warmupSets: 0, targetSets: 3, targetRepsObj: '12-15', tempo: '1-1-3-0', intensity: null, notes: '', history: [] },
+            face_pulls: { id: 'face_pulls', name: '3B. Face Pulls', type: 'metabolico', equipType: 'pesas', supersetGroup: 'DIA2_G3', warmupSets: 0, targetSets: 3, targetRepsObj: '15-20', tempo: '1-2-3-0', intensity: null, notes: '', history: [] },
+            triceps_polea: { id: 'triceps_polea', name: '4A. Tríceps Polea', type: 'metabolico', equipType: 'pesas', supersetGroup: 'DIA2_G4', warmupSets: 0, targetSets: 3, targetRepsObj: '8-12', tempo: '1-1-2-0', intensity: 'drop', notes: 'Drop Set en Serie 3.', history: [] },
+            curl_biceps: { id: 'curl_biceps', name: '4B. Curl Bíceps', type: 'metabolico', equipType: 'pesas', supersetGroup: 'DIA2_G4', warmupSets: 0, targetSets: 3, targetRepsObj: '10-12', tempo: '1-1-2-0', intensity: null, notes: '', history: [] },
+
+            hip_thrust: { id: 'hip_thrust', name: '1. Hip Thrust', type: 'metabolico', equipType: 'pesas', warmupSets: 1, targetSets: 4, targetRepsObj: '8-12', tempo: '1-3-2-0', intensity: 'partial', notes: 'Parciales en Serie 4.', history: [] },
+            abduccion: { id: 'abduccion', name: '2. Abducción', type: 'metabolico', equipType: 'pesas', warmupSets: 0, targetSets: 4, targetRepsObj: '12-15', tempo: '1-2-3-0', intensity: null, notes: '', history: [] },
+            aduccion: { id: 'aduccion', name: '3. Aducción', type: 'metabolico', equipType: 'pesas', warmupSets: 0, targetSets: 4, targetRepsObj: '8-12', tempo: '1-3-2-0', intensity: 'drop', notes: 'Drop Set en Serie 4.', history: [] },
+            bulgaras: { id: 'bulgaras', name: '4. Búlgaras', type: 'metabolico', equipType: 'pesas', warmupSets: 1, targetSets: 3, targetRepsObj: '12', tempo: '2-0-2-0', intensity: null, notes: '', history: [] },
+            hiperextensiones: { id: 'hiperextensiones', name: '5. Lumbar', type: 'metabolico', equipType: 'pesas', warmupSets: 0, targetSets: 3, targetRepsObj: '12-15', tempo: '1-1-2-0', intensity: null, notes: '', history: [] },
+            patada_gluteo: { id: 'patada_gluteo', name: '6A. Patada Polea', type: 'metabolico', equipType: 'pesas', supersetGroup: 'DIA3_G1', warmupSets: 0, targetSets: 4, targetRepsObj: '15', tempo: '1-1-2-0', intensity: null, notes: '', history: [] },
+            rematador: { id: 'rematador', name: '6B. Rematador Sincro', type: 'rehab', equipType: 'band', supersetGroup: 'DIA3_G1', warmupSets: 0, targetSets: 2, targetRepsObj: '25', tempo: 'Pulsos', intensity: null, notes: 'Banda al techo.', history: [] },
+
+            press_militar: { id: 'press_militar', name: '1A. Press Militar', type: 'metabolico', equipType: 'pesas', supersetGroup: 'DIA4_G1', warmupSets: 1, targetSets: 3, targetRepsObj: '10-12', tempo: '2-0-2-0', intensity: null, notes: '', history: [] },
+            jalon_neutro: { id: 'jalon_neutro', name: '1B. Jalón Neutro', type: 'metabolico', equipType: 'pesas', supersetGroup: 'DIA4_G1', warmupSets: 0, targetSets: 3, targetRepsObj: '10-12', tempo: '1-1-3-0', intensity: null, notes: '', history: [] },
+            elev_y: { id: 'elev_y', name: '2. Elevaciones Laterales', type: 'metabolico', equipType: 'pesas', warmupSets: 0, targetSets: 4, targetRepsObj: '12-15', tempo: '1-1-3-0', intensity: 'partial', notes: 'Parciales en Serie 4.', history: [] },
+            cruces_polea: { id: 'cruces_polea', name: '3. Cruces Polea', type: 'descanso', equipType: 'pesas', warmupSets: 0, targetSets: 0, targetRepsObj: '-', tempo: '-', notes: 'Descanso en este ejercicio.', history: [] },
+            triceps_copa: { id: 'triceps_copa', name: '4A. Copa Tras Nuca', type: 'metabolico', equipType: 'pesas', supersetGroup: 'DIA4_G2', warmupSets: 0, targetSets: 3, targetRepsObj: '10-12', tempo: '1-2-3-0', intensity: null, notes: '', history: [] },
+            curl_polea: { id: 'curl_polea', name: '4B. Curl Polea', type: 'metabolico', equipType: 'pesas', supersetGroup: 'DIA4_G2', warmupSets: 0, targetSets: 3, targetRepsObj: '10-12', tempo: '1-1-2-0', intensity: null, notes: '', history: [] },
+
+            cardio_zona2: { id: 'cardio_zona2', name: '🔥 Caminadora (12-3-30)', type: 'cardio', equipType: 'cardio_z2', warmupSets: 0, targetSets: 1, targetRepsObj: '35', tempo: '12% a 4.8km/h', notes: 'Sin manos. Oxidación Grasa.', history: [] },
+            core_circuito: { id: 'core_circuito', name: '🧱 Circuito Core', type: 'core', equipType: 'isometric', warmupSets: 0, targetSets: 3, targetRepsObj: 'Circuito', tempo: 'Estricto', notes: 'DeadBugs(20) > Pallof(15/L) > Frontal(40s).', history: [] },
+            rehab_pm: { id: 'rehab_pm', name: '🛠️ Rehab y Movilidad', type: 'rehab', equipType: 'isometric', warmupSets: 0, targetSets: 1, targetRepsObj: '10', tempo: 'Lento', notes: 'Alfredson (3x15) + Estiramiento cadera.', history: [] },
+            flush_lactico: { id: 'flush_lactico', name: '💦 Flush Láctico', type: 'cardio', equipType: 'cardio_z2', warmupSets: 0, targetSets: 1, targetRepsObj: '20', tempo: 'Alegre', notes: 'Cero carga. Lavar ácido láctico.', history: [] },
+            core_dinamico: { id: 'core_dinamico', name: '🧱 Core Dinámico', type: 'core', equipType: 'isometric', warmupSets: 0, targetSets: 3, targetRepsObj: 'Circuito', tempo: 'Fluido', notes: 'Bird-Dog(12/L) > Plancha hombros(20) > Puentes(20).', history: [] },
+            descompresion: { id: 'descompresion', name: '🧘‍♀️ Descompresión', type: 'rehab', equipType: 'isometric', warmupSets: 0, targetSets: 1, targetRepsObj: '10', tempo: 'Pasivo', notes: 'Dead Hangs (3x30s) + Couch stretch.', history: [] },
+            cardio_hiit: { id: 'cardio_hiit', name: '🔥 Caminadora Cuesta', type: 'cardio', equipType: 'cardio_hiit', warmupSets: 0, targetSets: 8, targetRepsObj: 'Rondas', tempo: '30s/60s', notes: '30s Cuesta Rápida / 60s Plano.', history: [] }
+          },
+          esposo: {
+            ext_piernas: { id: 'ext_piernas', name: '1A. Extensión Piernas', type: 'mentzer', equipType: 'pesas', supersetGroup: 'DIA1_G1', warmupSets: 2, targetSets: 1, targetRepsObj: '10', tempo: '1-1-6-0', intensity: null, notes: 'Excéntrica 6s. Rest-Pause al final. Directo a Prensa.', history: [] },
+            prensa: { id: 'prensa', name: '1B. Prensa de Piernas', type: 'mentzer', equipType: 'pesas', supersetGroup: 'DIA1_G1', warmupSets: 0, targetSets: 1, targetRepsObj: '10', tempo: '1-0-6-0', intensity: null, notes: 'Fallo absoluto.', history: [] },
+            rdl: { id: 'rdl', name: '2. Peso Muerto Rumano', type: 'mentzer', equipType: 'pesas', warmupSets: 1, targetSets: 3, targetRepsObj: '10', tempo: '1-0-3-1', intensity: null, notes: 'Control excéntrico.', history: [] },
+            curl_femoral: { id: 'curl_femoral', name: '3. Curl Femoral', type: 'mentzer', equipType: 'pesas', warmupSets: 1, targetSets: 2, targetRepsObj: '8', tempo: '1-1-4-0', intensity: 'drop', notes: 'Drop Set en Serie 2.', history: [] },
+            pant_smith: { id: 'pant_smith', name: '4. Pantorrillas Smith', type: 'mentzer', equipType: 'pesas', warmupSets: 1, targetSets: 3, targetRepsObj: '15', tempo: '1-1-3-0', intensity: null, notes: '', history: [] },
+            pant_sentado: { id: 'pant_sentado', name: '5. Sóleo Sentado', type: 'mentzer', equipType: 'pesas', warmupSets: 0, targetSets: 3, targetRepsObj: '15', tempo: '1-2-4-0', intensity: 'drop', notes: 'Drop Set en Serie 3.', history: [] },
+            
+            press_inclinado: { id: 'press_inclinado', name: '1A. Press Inclinado', type: 'arnold', equipType: 'pesas', supersetGroup: 'DIA2_G1', warmupSets: 2, targetSets: 3, targetRepsObj: '10', tempo: '2-1-4-0', intensity: null, notes: 'RPE 8.5-9.', history: [] },
+            remo_sentado: { id: 'remo_sentado', name: '1B. Remo Sentado', type: 'arnold', equipType: 'pesas', supersetGroup: 'DIA2_G1', warmupSets: 1, targetSets: 3, targetRepsObj: '10', tempo: '1-2-3-0', intensity: null, notes: '', history: [] },
+            press_plano: { id: 'press_plano', name: '2A. Press Plano', type: 'arnold', equipType: 'pesas', supersetGroup: 'DIA2_G2', warmupSets: 1, targetSets: 3, targetRepsObj: '10', tempo: '2-0-2-0', intensity: null, notes: '', history: [] },
+            jalon_prono: { id: 'jalon_prono', name: '2B. Jalón Polea Alta', type: 'arnold', equipType: 'pesas', supersetGroup: 'DIA2_G2', warmupSets: 1, targetSets: 3, targetRepsObj: '10', tempo: '1-1-3-0', intensity: null, notes: '', history: [] },
+            pec_deck: { id: 'pec_deck', name: '3A. Cruces Pecho', type: 'arnold', equipType: 'pesas', supersetGroup: 'DIA2_G3', warmupSets: 0, targetSets: 3, targetRepsObj: '12', tempo: '1-1-3-0', intensity: 'drop', notes: 'Sin agarre. Drop Set en Serie 3.', history: [] },
+            face_pulls: { id: 'face_pulls', name: '3B. Face Pulls', type: 'arnold', equipType: 'pesas', supersetGroup: 'DIA2_G3', warmupSets: 0, targetSets: 3, targetRepsObj: '20', tempo: '1-2-3-0', intensity: null, notes: '', history: [] },
+            triceps_polea: { id: 'triceps_polea', name: '4A. Tríceps Polea', type: 'arnold', equipType: 'pesas', supersetGroup: 'DIA2_G4', warmupSets: 0, targetSets: 3, targetRepsObj: '12', tempo: '1-1-2-0', intensity: 'drop', notes: 'Drop Set en Serie 3.', history: [] },
+            curl_biceps: { id: 'curl_biceps', name: '4B. Curl Bíceps', type: 'arnold', equipType: 'pesas', supersetGroup: 'DIA2_G4', warmupSets: 0, targetSets: 3, targetRepsObj: '12', tempo: '1-1-2-0', intensity: 'partial', notes: 'Parciales en Serie 3.', history: [] },
+
+            hip_thrust: { id: 'hip_thrust', name: '1. Hip Thrust', type: 'explosivo', equipType: 'pesas', warmupSets: 2, targetSets: 3, targetRepsObj: '8', tempo: '1-2-3-0', intensity: 'partial', notes: 'Parciales en Serie 3. Subir RÁPIDO.', history: [] },
+            abduccion: { id: 'abduccion', name: '2. Abducción', type: 'explosivo', equipType: 'pesas', warmupSets: 0, targetSets: 4, targetRepsObj: '12', tempo: '1-2-3-0', intensity: null, notes: '', history: [] },
+            aduccion: { id: 'aduccion', name: '3. Aducción', type: 'explosivo', equipType: 'pesas', warmupSets: 0, targetSets: 3, targetRepsObj: '12', tempo: '1-2-3-0', intensity: null, notes: '', history: [] },
+            bulgaras: { id: 'bulgaras', name: '4. Búlgaras', type: 'explosivo', equipType: 'pesas', warmupSets: 1, targetSets: 3, targetRepsObj: '10', tempo: '2-0-2-0', intensity: null, notes: '', history: [] },
+            hiperextensiones: { id: 'hiperextensiones', name: '5. Lumbar', type: 'explosivo', equipType: 'pesas', warmupSets: 0, targetSets: 3, targetRepsObj: '15', tempo: '1-1-2-0', intensity: null, notes: 'Tensión isométrica arriba.', history: [] },
+            patada_gluteo: { id: 'patada_gluteo', name: '6A. Patada Polea', type: 'explosivo', equipType: 'pesas', supersetGroup: 'DIA3_G1', warmupSets: 0, targetSets: 3, targetRepsObj: '12', tempo: '1-1-2-0', intensity: null, notes: '', history: [] },
+            rematador: { id: 'rematador', name: '6B. Rematador Sincro', type: 'rehab', equipType: 'isometric', supersetGroup: 'DIA3_G1', warmupSets: 0, targetSets: 2, targetRepsObj: '45s', tempo: 'Isométrico', intensity: null, notes: 'Isometría zancada.', history: [] },
+
+            press_militar: { id: 'press_militar', name: '1A. Press Militar', type: 'arnold', equipType: 'pesas', supersetGroup: 'DIA4_G1', warmupSets: 2, targetSets: 3, targetRepsObj: '10', tempo: '2-0-2-0', intensity: null, notes: '', history: [] },
+            jalon_neutro: { id: 'jalon_neutro', name: '1B. Jalón Neutro', type: 'arnold', equipType: 'pesas', supersetGroup: 'DIA4_G1', warmupSets: 1, targetSets: 3, targetRepsObj: '10', tempo: '1-1-3-0', intensity: null, notes: '', history: [] },
+            elev_y: { id: 'elev_y', name: '2. Elevaciones Laterales', type: 'arnold', equipType: 'pesas', warmupSets: 0, targetSets: 4, targetRepsObj: '12', tempo: '1-1-3-0', intensity: 'drop', notes: 'Drop Set y luego Parciales en Serie 4.', history: [] },
+            cruces_polea: { id: 'cruces_polea', name: '3. Cruces Polea Pecho', type: 'arnold', equipType: 'pesas', warmupSets: 0, targetSets: 3, targetRepsObj: '15', tempo: '1-1-2-0', intensity: null, notes: 'Aducción, aislando la bursa.', history: [] },
+            triceps_copa: { id: 'triceps_copa', name: '4A. Copa Tras Nuca', type: 'arnold', equipType: 'pesas', supersetGroup: 'DIA4_G2', warmupSets: 1, targetSets: 3, targetRepsObj: '10', tempo: '1-2-3-0', intensity: null, notes: 'Banca a 80 grados.', history: [] },
+            curl_polea: { id: 'curl_polea', name: '4B. Curl Polea', type: 'arnold', equipType: 'pesas', supersetGroup: 'DIA4_G2', warmupSets: 0, targetSets: 3, targetRepsObj: '10', tempo: '1-1-2-0', intensity: 'drop', notes: 'Drop Set en Serie 3.', history: [] },
+
+            cardio_zona2: { id: 'cardio_zona2', name: '🔥 Bici / Elíptica', type: 'cardio', equipType: 'cardio_z2', warmupSets: 0, targetSets: 1, targetRepsObj: '35', tempo: 'Zona 2', notes: 'Esfuerzo 6/10. Sudor constante.', history: [] },
+            core_circuito: { id: 'core_circuito', name: '🧱 Circuito Core NBA', type: 'core', equipType: 'isometric', warmupSets: 0, targetSets: 3, targetRepsObj: 'Circuito', tempo: 'Estricto', notes: 'DeadBugs(20) > Pallof(15/L) > Copenhague(30s).', history: [] },
+            rehab_pm: { id: 'rehab_pm', name: '🛠️ Rehab y Movilidad', type: 'rehab', equipType: 'isometric', warmupSets: 0, targetSets: 1, targetRepsObj: '10', tempo: 'Lento', notes: 'Alfredson (3x15) + Estiramiento cadera.', history: [] },
+            flush_lactico: { id: 'flush_lactico', name: '💦 Flush Láctico', type: 'cardio', equipType: 'cardio_z2', warmupSets: 0, targetSets: 1, targetRepsObj: '20', tempo: 'Alegre', notes: 'Cero resistencia. Lavar ácido láctico.', history: [] },
+            core_dinamico: { id: 'core_dinamico', name: '🧱 Core Dinámico', type: 'core', equipType: 'isometric', warmupSets: 0, targetSets: 3, targetRepsObj: 'Circuito', tempo: 'Fluido', notes: 'Bird-Dog(12/L) > Plancha hombros(20) > Puentes(20).', history: [] },
+            descompresion: { id: 'descompresion', name: '🧘‍♂️ Descompresión', type: 'rehab', equipType: 'isometric', warmupSets: 0, targetSets: 1, targetRepsObj: '10', tempo: 'Pasivo', notes: 'Dead Hangs (3x30s) + Couch stretch.', history: [] },
+            cardio_hiit: { id: 'cardio_hiit', name: '🔥 Bici Sprint', type: 'cardio', equipType: 'cardio_hiit', warmupSets: 0, targetSets: 10, targetRepsObj: '10', tempo: '20s/40s', notes: '20s a muerte / 40s suave.', history: [] }
+          }
+        });
+
+        const biomecanicaDB = {
+            diccionario: {
+                agarres: [
+                    { nombre: "Prono (Pronado)", desc: "Palmas mirando hacia ABAJO o hacia ADELANTE." },
+                    { nombre: "Supino (Supinado)", desc: "Palmas mirando hacia ARRIBA o hacia TI." },
+                    { nombre: "Neutro", desc: "Palmas mirándose ENTRE SÍ. Este es el agarre más seguro." },
+                    { nombre: "Falso (Suicida)", desc: "El pulgar no envuelve la barra. Para 'apagar' el antebrazo." }
+                ],
+                bancas: [
+                    { nombre: "Plana (0°)", desc: "Para press de pecho plano o apoyos básicos." },
+                    { nombre: "Inclinada (30° a 45°)", desc: "Enfoca trabajo en pectoral superior y hombros frontales." },
+                    { nombre: "Militar/Recta (80° a 90°)", desc: "Respaldo casi vertical. Espalda baja pegada al cojín." }
+                ]
+            },
+            ejercicios: {
+                "Pecho y Hombros": [
+                    { id: "press_inclinado", nombre: "1. Press Inclinado", accesorio: "Mancuernas", banca: "Inclinada a 30° o 45°", posicion: "Pies clavados. Glúteos y espalda alta pegados al asiento. Nuca apoyada SIEMPRE.", ejecucion: "AGARRE Y CODOS: Gira mancuernas en diagonal (45°). Codos cerrados hacia las costillas formando una 'A'." },
+                    { id: "press_militar", nombre: "2. Press Militar Sentado", accesorio: "Mancuernas", banca: "Militar (80°-85°)", posicion: "Nuca apoyada. Saca el pecho.", ejecucion: "AGARRE Y CODOS: Prono. Codos bajan por DELANTE del torso. Empuja hasta casi bloquear." },
+                    { id: "cruces_polea", nombre: "3. Cruce de Poleas (Jueves)", accesorio: "Agarre D o Bola del cable", banca: "De pie", posicion: "Poleas altura de pecho. Un pie adelante y otro atrás. Pecho inflado.", ejecucion: "MOVIMIENTO: Codos semi-flexionados. Abraza el barril imaginario y exprime el pecho.", nota: "Aísla el pecho al 100% sin compresión articular. (Solo para Él)." },
+                    { id: "elev_y", nombre: "4. Elevaciones Laterales 'Y'", accesorio: "Mancuernas", banca: "De pie o sin respaldo", posicion: "Torso inclinado adelante (10 grados).", ejecucion: "BRAZOS: Levántalas en diagonal (a las 10 y a las 2) formando una 'Y'. Alinea con plano escapular." }
+                ],
+                "Espalda y Tracción": [
+                    { id: "jalon_prono", nombre: "1. Jalón Polea Alta (Martes)", accesorio: "Barra Larga Curva", banca: "Máquina Jalón", posicion: "Rodillas trabadas. Torso inclinado 15° atrás. Mirada a polea.", ejecucion: "MOVIMIENTO: Agarre falso prono ancho. Tira hacia clavícula sacando el pecho." },
+                    { id: "jalon_neutro", nombre: "2. Jalón Polea Alta Neutro (Jueves)", accesorio: "Agarre V / Barra Corta", banca: "Máquina Jalón", posicion: "Misma posición base.", ejecucion: "MOVIMIENTO: Tira hacia la boca del estómago. Transfiere el trabajo a romboides." },
+                    { id: "remo_sentado", nombre: "3. Remo Sentado", accesorio: "Convergente / Banco Inclinado", banca: "Apoyo en Pecho", posicion: "Aplasta tu pecho contra el cojín para no usar zona lumbar.", ejecucion: "MOVIMIENTO: Deja que el peso estire hombros adelante. Inicia jalando escápulas, luego codos atrás." },
+                    { id: "face_pulls", nombre: "4. Face Pulls", accesorio: "Cuerda de Tríceps", banca: "Polea Alta", posicion: "De pie, un pie adelante.", ejecucion: "MOVIMIENTO: Tira cuerda hacia tu frente separando manos al final. Codos arriba y atrás." }
+                ],
+                "Brazos (Bíceps y Tríceps)": [
+                    { id: "triceps_polea", nombre: "1. Tríceps Polea (Pushdown)", accesorio: "Cuerda de Tríceps", banca: "De pie", posicion: "Codos pegados a las costillas (¡SUPER IMPORTANTE!).", ejecucion: "MOVIMIENTO: Separar las manos abajo (pronación)." },
+                    { id: "triceps_copa", nombre: "2. Tríceps Copa Tras Nuca", accesorio: "1 Mancuerna Pesada", banca: "Militar (80°)", posicion: "Espalda baja y nuca apoyadas. Codos arriba/diagonal.", ejecucion: "MOVIMIENTO: Agarre diamante bajo el disco. Bajar por detrás de la cabeza." },
+                    { id: "curl_biceps", nombre: "3. Curl de Bíceps", accesorio: "Barra Z o Mancuernas", banca: "De pie", posicion: "Hombros atrás. Codos adelante de costillas. Sin balanceo.", ejecucion: "MOVIMIENTO: Sube flexionando solo el codo (supinación)." }
+                ],
+                "Tren Inferior (Piernas y Glúteos)": [
+                    { id: "prensa", nombre: "1. Prensa de Piernas", accesorio: "Leg Press", banca: "Máquina", posicion: "Pies ALTOS. Glúteos incrustados. Nuca apoyada.", ejecucion: "MOVIMIENTO: Al subir, NUNCA bloquees rodillas. Al bajar, rodillas van hacia hombros." },
+                    { id: "bulgaras", nombre: "2. Sentadilla Búlgara", accesorio: "Mancuernas / Banco", banca: "Banco plano", posicion: "Empeine trasero en banco. Torso inclinado al frente.", ejecucion: "MOVIMIENTO: Baja como ascensor. Rodilla delantera firme." },
+                    { id: "rdl", nombre: "3. Peso Muerto Rumano (RDL)", accesorio: "Mancuernas o Barra", banca: "De pie", posicion: "Pies caderas. Rodillas semi-flexionadas. Pecho arriba. Cuello neutro.", ejecucion: "MOVIMIENTO: Empuja cadera ATRÁS. Mancuernas raspan muslos." },
+                    { id: "hip_thrust", nombre: "4. Hip Thrust", accesorio: "Smith o Barra con ALMOHADILLA", banca: "Banco a escápulas", posicion: "Él: Pies hombros. Ella: Discos bajo puntas de pies.", ejecucion: "MOVIMIENTO: Empuje estricto de cadera." },
+                    { id: "ext_piernas", nombre: "5. Extensión de Piernas", accesorio: "Máquina", banca: "Silla de máquina", posicion: "Rodillo sobre canillas.", ejecucion: "MOVIMIENTO: Agárrate fuerte. Sube explosivo, aprieta 1s, baja en 6s." }
+                ]
+            },
+            accesorios: {
+                "Espalda y Poleas": [
+                    { nombre: "1. Agarre MARSAFIT Ancho", donde: "DÍA MARTES - Jalón Polea Alta", porque: "Reemplaza barra larga recta. Evita rotar hombros hacia adentro, salvando la bursa.", como: "Usa tus manos como 'ganchos'. Tira llevando codos hacia costillas." },
+                    { nombre: "2. Agarre MARSAFIT Medio", donde: "DÍA JUEVES - Jalón Polea Alta Neutro", porque: "Busca 'densidad'. Permite codos pegados al torso, activando romboides.", como: "Tira apuntando hacia clavícula. Junta escápulas." },
+                    { nombre: "3. Remo Convergente", donde: "DÍA MARTES - Remo Sentado", porque: "El cojín apaga la zona lumbar. Cargas peso 100% seguro.", como: "Aplasta el pecho. Estira brazos y tira fuerte llevando codos atrás." }
+                ],
+                "Pecho y Hombros": [
+                    { nombre: "4. Bola de Goma", donde: "DÍA JUEVES - Cruce de Poleas (ÉL)", porque: "Anula el antebrazo/bíceps. El 100% del peso recae en pectoral y alinea muñecas.", como: "Abraza el barril y aprieta el pecho 1 segundo." },
+                    { nombre: "5. Mancuernas Libres", donde: "MARTES Y JUEVES - Presses", porque: "No te bloquean. Permiten rotar muñecas para encontrar el ángulo sin dolor.", como: "Nunca abras codos en 'T'. Ciérralos en 'A' (45°)." }
+                ],
+                "Brazos (Bíceps y Tríceps)": [
+                    { nombre: "6. Cuerda Gruesa", donde: "MARTES Y JUEVES - Tríceps y Face Pulls", porque: "Permite separar manos abajo, contrayendo la 'herradura' completa.", como: "En tríceps: Clava codos. En Face Pull: Tira hacia tu nariz." },
+                    { nombre: "7. Barra Z (EZ Curl Bar)", donde: "MARTES Y JUEVES - Curl Bíceps", porque: "Ángulo semi-supinado. Protege muñecas comparado con barra recta.", como: "Pecho arriba. Sube sin balanceo." }
+                ],
+                "Glúteos y Tren Inferior": [
+                    { nombre: "8. Almohadilla Protectora", donde: "DÍA MIÉRCOLES - Hip Thrust", porque: "Obligatorio para no aplastar crestas ilíacas.", como: "Enróllala en el centro de la barra." },
+                    { nombre: "9. Discos Fraccionales", donde: "DÍA MIÉRCOLES - Hip Thrust (Esposa)", porque: "Elevar puntas acorta cuádriceps; glúteo absorbe el 100%.", como: "Ella apoya SOLO la 'bola' del pie sobre ellos." },
+                    { nombre: "10. Banda Circular", donde: "DÍA MIÉRCOLES - Rematador Sincro", porque: "Tensión lateral constante hace arder el glúteo medio.", como: "Por encima de las rodillas. Lucha para que no se junten." }
+                ]
+            }
+        };
+
+        function BibliotecaModulo({ user }) {
+            const [seccionActiva, setSeccionActiva] = useState(null);
+            const [vistaActual, setVistaActual] = useState('ejercicios');
+
+            return (
+                <div className="animate-slide-up pb-10">
+                    <div className="flex bg-gray-200 rounded-xl p-1 mb-4 shadow-inner">
+                        <button onClick={() => setVistaActual('ejercicios')} className={`flex-1 py-2 text-xs font-black uppercase rounded-lg transition-all ${vistaActual === 'ejercicios' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>🏋️ Ejercicios</button>
+                        <button onClick={() => setVistaActual('accesorios')} className={`flex-1 py-2 text-xs font-black uppercase rounded-lg transition-all ${vistaActual === 'accesorios' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>⚙️ Accesorios</button>
+                    </div>
+
+                    {vistaActual === 'ejercicios' ? (
+                        <>
+                            <div className="bg-gray-900 text-white p-4 rounded-2xl mb-4 shadow-lg">
+                                <h2 className="font-black text-lg uppercase tracking-widest mb-1">Diccionario Técnico</h2>
+                                <div className="text-xs text-gray-300 space-y-2 mt-3 border-t border-gray-700 pt-2">
+                                    <p className="font-bold text-blue-400">AGARRES</p>
+                                    <ul className="list-disc pl-4 space-y-1">{biomecanicaDB.diccionario.agarres.map((item, i) => <li key={i}><strong className="text-white">{item.nombre}:</strong> {item.desc}</li>)}</ul>
+                                    <p className="font-bold text-blue-400 mt-2">BANCAS</p>
+                                    <ul className="list-disc pl-4 space-y-1">{biomecanicaDB.diccionario.bancas.map((item, i) => <li key={i}><strong className="text-white">{item.nombre}:</strong> {item.desc}</li>)}</ul>
+                                </div>
+                            </div>
+                            <div className="space-y-4">
+                                {Object.entries(biomecanicaDB.ejercicios).map(([bloque, ejercicios]) => (
+                                    <div key={bloque} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                                        <button onClick={() => setSeccionActiva(seccionActiva === bloque ? null : bloque)} className="w-full p-4 flex justify-between items-center bg-gray-50 hover:bg-gray-100 transition-colors"><h3 className="font-black text-gray-900 uppercase tracking-tight">{bloque}</h3><span className={`transform transition-transform font-black text-gray-400 ${seccionActiva === bloque ? 'rotate-180' : ''}`}>▼</span></button>
+                                        {seccionActiva === bloque && (
+                                            <div className="p-4 space-y-4 border-t border-gray-100">
+                                                {ejercicios.map((ej) => (
+                                                    <div key={ej.id} className="bg-white border border-blue-100 rounded-xl p-3 shadow-sm relative overflow-hidden">
+                                                        <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                                                        <h4 className="font-black text-sm text-gray-900 mb-2 pl-2">{ej.nombre}</h4>
+                                                        <div className="space-y-2 text-xs pl-2">
+                                                            <div className="flex items-start gap-2"><span className="bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider text-[9px]">Accesorio</span><span className="font-bold text-gray-700">{ej.accesorio}</span></div>
+                                                            <div className="flex items-start gap-2"><span className="bg-gray-200 text-gray-800 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider text-[9px]">Banca</span><span className="font-medium text-gray-700">{ej.banca}</span></div>
+                                                            <div className="bg-gray-50 p-2 rounded-lg border border-gray-100 mt-2"><p className="font-bold text-gray-900 mb-1 text-[10px] uppercase tracking-widest">📐 Posición</p><p className="text-gray-600 whitespace-pre-line leading-relaxed">{ej.posicion}</p></div>
+                                                            <div className="bg-blue-50 p-2 rounded-lg border border-blue-100"><p className="font-bold text-blue-900 mb-1 text-[10px] uppercase tracking-widest">⚙️ Ejecución</p><p className="text-blue-800 leading-relaxed">{ej.ejecucion}</p></div>
+                                                            {ej.nota && <div className="bg-purple-50 p-2 rounded-lg border border-purple-100"><p className="font-bold text-purple-900 mb-1 text-[10px] uppercase tracking-widest">💡 Nota Estratégica</p><p className="text-purple-800 leading-relaxed">{ej.nota}</p></div>}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    ) : (
+                        <div className="space-y-4">
+                            {Object.entries(biomecanicaDB.accesorios).map(([bloque, accesorios]) => (
+                                <div key={bloque} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                                    <button onClick={() => setSeccionActiva(seccionActiva === bloque ? null : bloque)} className="w-full p-4 flex justify-between items-center bg-gray-50 hover:bg-gray-100 transition-colors"><h3 className="font-black text-gray-900 uppercase tracking-tight">{bloque}</h3><span className={`transform transition-transform font-black text-gray-400 ${seccionActiva === bloque ? 'rotate-180' : ''}`}>▼</span></button>
+                                    {seccionActiva === bloque && (
+                                        <div className="p-4 space-y-4 border-t border-gray-100">
+                                            {accesorios.map((acc, idx) => (
+                                                <div key={idx} className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm relative overflow-hidden">
+                                                    <div className="absolute top-0 left-0 w-1 h-full bg-gray-800"></div>
+                                                    <h4 className="font-black text-sm text-gray-900 mb-2 pl-2">{acc.nombre}</h4>
+                                                    <div className="space-y-2 text-xs pl-2">
+                                                        <div className="flex items-start gap-2"><span className="bg-red-100 text-red-800 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider text-[9px]">Cuándo</span><span className="font-bold text-gray-700">{acc.donde}</span></div>
+                                                        <div className="bg-gray-50 p-2 rounded-lg border border-gray-100 mt-2"><p className="font-bold text-gray-900 mb-1 text-[10px] uppercase tracking-widest">🧠 ¿Por qué usarlo?</p><p className="text-gray-600 whitespace-pre-line leading-relaxed">{acc.porque}</p></div>
+                                                        <div className="bg-gray-800 p-2 rounded-lg border border-gray-700"><p className="font-bold text-gray-300 mb-1 text-[10px] uppercase tracking-widest">⚙️ ¿Cómo usarlo?</p><p className="text-gray-200 leading-relaxed">{acc.como}</p></div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function FuerzaRow({ set, setIdx, visualNum, exId, exData, toggleSetType, addTechnique, updateSet, updateDropSet, openRpeModal, handleComplete, deleteSet, globalUnit, globalBar, prevString }) {
+            const isWarmup = set.type === 'warmup';
+            const isCompleted = set.completed;
+            const isLastTarget = setIdx === (exData.warmupSets || 0) + (exData.targetSets || 0) - 1;
+            const showPartialInput = set.technique === 'partial';
+
+            // Cálculos del Total en Vivo (Discos + Barra)
+            const barWeight = (globalBar === 'none' || globalBar === 'mancuernas') ? 0 : (globalUnit === 'kg' ? BARBELLS[globalBar].weightKg : BARBELLS[globalBar].weightLbs);
+            const currentInputRaw = parseFloat(set.platesInput) || 0;
+            const dynamicTotal = currentInputRaw + barWeight;
+            const showTotal = barWeight > 0 && currentInputRaw > 0;
+
+            const rowBg = isCompleted ? 'bg-[#e2f5e2]' : (isWarmup ? 'bg-[#fdf9e6]' : 'bg-transparent');
+            const numBg = isCompleted ? 'bg-transparent text-[#2ea043]' : (isWarmup ? 'text-[#d4a017]' : 'text-gray-900');
+            const checkBg = isCompleted ? 'bg-[#34c759] text-white shadow-sm' : 'bg-[#e5e5ea] text-white hover:bg-gray-300';
+            const inputClass = `w-full bg-transparent text-center font-black outline-none placeholder-gray-300 ${isCompleted ? 'text-[#1e6a2b]' : 'text-gray-900'}`;
+
+            return (
+                <div className="border-b border-gray-100 last:border-0 pb-1">
+                    <div className={`set-row flex items-center gap-1.5 py-3 px-2 transition-colors ${rowBg}`}>
+                        
+                        <div className="w-10 flex flex-col justify-center items-center relative">
+                            <button onClick={() => toggleSetType(exId, setIdx)} disabled={isCompleted} className={`w-8 h-8 rounded-lg text-xs font-black transition-colors ${numBg}`}>
+                                {isWarmup ? 'A' : visualNum}
+                            </button>
+                            {isLastTarget && exData.intensity && !isCompleted && !set.technique && (
+                                <button onClick={() => addTechnique(exId, setIdx, exData.intensity === 'drop' ? 'add_drop' : 'partial')} className="absolute -bottom-4 text-[8px] font-black uppercase text-purple-600 whitespace-nowrap">
+                                    + {exData.intensity === 'drop' ? 'Drop' : 'Parcial'}
+                                </button>
+                            )}
+                        </div>
+                        
+                        <div className="w-[75px] text-center flex flex-col justify-center">
+                            <span className={`text-[10px] font-bold leading-none ${isCompleted ? 'text-[#4ade80]' : 'text-gray-400'}`}>{prevString || '-'}</span>
+                        </div>
+                        
+                        <div className="flex-1 bg-gray-100/50 rounded-xl px-1 py-2 mx-1 relative flex flex-col justify-center min-h-[36px]">
+                            {exData.equipType === 'band' ? (
+                                <select value={set.platesInput} onChange={e => updateSet(exId, setIdx, 'platesInput', e.target.value)} disabled={isCompleted} className={`${inputClass} text-xs custom-select`}><option>Corporal</option><option>B. Ligera</option><option>B. Media</option><option>B. Pesada</option></select>
+                            ) : (
+                                <>
+                                    <input type={exData.equipType === 'isometric' ? "text" : "number"} value={set.platesInput} onChange={e => updateSet(exId, setIdx, 'platesInput', e.target.value)} disabled={isCompleted || exData.equipType === 'isometric'} className={inputClass} placeholder="-"/>
+                                    {showTotal && (
+                                        <div className="absolute -bottom-3 left-0 w-full text-center pointer-events-none">
+                                            <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Tot: {dynamicTotal}</span>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                        
+                        <div className="flex-1 bg-gray-100/50 rounded-xl px-1 py-2 mx-1 relative min-h-[36px]">
+                            <input type="number" value={set.reps} onChange={e => updateSet(exId, setIdx, 'reps', e.target.value)} disabled={isCompleted} className={inputClass} placeholder="-"/>
+                            {showPartialInput && (
+                                <div className="absolute -bottom-6 left-0 w-full flex items-center justify-center animate-slide-up z-10">
+                                    <span className="text-[10px] font-black text-yellow-800 bg-yellow-100 px-2 py-0.5 rounded-full border border-yellow-300 shadow-sm flex items-center gap-1">⚡ Parciales: <input type="number" value={set.techReps} onChange={e => updateSet(exId, setIdx, 'techReps', e.target.value)} disabled={isCompleted} className="w-8 bg-white border border-yellow-400 rounded text-center outline-none" placeholder="0"/></span>
+                                </div>
+                            )}
+                        </div>
+                        
+                        {(exData.equipType === 'pesas') && (
+                            <div className="w-12 bg-gray-100/50 rounded-xl py-2 mx-1 cursor-pointer min-h-[36px] flex items-center justify-center" onClick={() => openRpeModal(exId, setIdx, set.rpe, false)}>
+                                <div className={`text-center font-black text-[10px] ${isWarmup ? 'text-transparent' : (isCompleted ? 'text-[#1e6a2b]' : 'text-gray-400')}`}>{isWarmup ? '-' : (set.rpe ? `RPE ${set.rpe}` : 'RPE')}</div>
+                            </div>
+                        )}
+                        
+                                                <div className="w-12 flex justify-end gap-1 pl-1">
+                            <button onClick={() => deleteSet(exId, setIdx)} className={`w-8 h-8 flex items-center justify-center text-xs transition-opacity ${isCompleted ? 'opacity-80 hover:opacity-100' : 'opacity-20 hover:opacity-60'}`}>🗑️</button>
+                            <button onClick={() => handleComplete(exId, setIdx)} className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm transition-colors ${checkBg}`}>✓</button>
+                        </div>
+
+                    </div>
+
+                    {set.technique === 'drop' && set.drops && set.drops.map((drop, dIdx) => (
+                        <div key={dIdx} className="flex items-center gap-1.5 py-1.5 px-3 bg-purple-50/40 border-t border-purple-100 animate-slide-up pl-4 relative">
+                            <div className="absolute left-[34px] top-0 w-[2px] h-full bg-purple-200"></div>
+                            <div className="w-[85px] flex flex-col items-center z-10 py-1 pl-2">
+                                <span className="text-[10px] font-black text-purple-900 leading-none text-center">{dIdx === 0 ? '🩸 DROP SET' : '🩸 STRIP SET'}</span>
+                                {dIdx === set.drops.length - 1 && !set.completed && ( <button onClick={() => addTechnique(exId, setIdx, 'remove_drop')} className="text-[8px] text-red-500 font-bold uppercase mt-1 hover:bg-red-50 px-1.5 rounded transition-colors">Quitar</button> )}
+                            </div>
+                            <div className="flex-1 z-10"><input type="number" value={drop.weight} onChange={e => updateDropSet(exId, setIdx, dIdx, 'weight', e.target.value)} disabled={set.completed} className="w-full bg-white border border-purple-300 rounded-xl p-2 text-center font-black text-purple-900 outline-none shadow-sm" placeholder="Peso (-30%)"/></div>
+                            <div className="flex-1 z-10"><input type="number" value={drop.reps} onChange={e => updateDropSet(exId, setIdx, dIdx, 'reps', e.target.value)} disabled={set.completed} className="w-full bg-white border border-purple-300 rounded-xl p-2 text-center font-black text-purple-900 outline-none shadow-sm" placeholder="Reps al fallo"/></div>
+                            <div className="w-12 z-10"></div><div className="w-12 z-10"></div>
+                        </div>
+                    ))}
+                    
+                    {set.technique === 'drop' && !set.completed && (
+                         <div className="flex justify-start pl-[50px] py-1.5 bg-purple-50/40 border-t border-purple-100 relative">
+                             <div className="absolute left-[34px] top-0 w-[2px] h-1/2 bg-purple-200"></div>
+                             <button onClick={() => addTechnique(exId, setIdx, 'add_drop')} className="text-[10px] font-black text-purple-800 bg-purple-100 hover:bg-purple-200 border border-purple-300 px-3 py-1.5 rounded-lg shadow-sm transition-colors z-10">➕ Añadir Strip Set</button>
+                         </div>
+                    )}
+                </div>
+            );
+        }
+
+        function CardioRow({ set, setIdx, exId, exData, updateSet, handleComplete, deleteSet }) {
+            const isCinta = set.c_machine === 'Caminadora'; const isGradas = set.c_machine === 'Gradas';
+            if (exData.equipType === 'cardio_z2') {
+                return (
+                    <div className={`flex items-center gap-1.5 py-2 px-3 border-b border-gray-50 ${set.completed ? 'bg-gray-50 opacity-60' : ''}`}>
+                        <div className="w-24"><select value={set.c_machine} onChange={e => updateSet(exId, setIdx, 'c_machine', e.target.value)} disabled={set.completed} className="w-full bg-gray-100 rounded-lg p-2 text-xs font-bold outline-none"><option>Caminadora</option><option>Bici</option><option>Elíptica</option><option>Gradas</option></select></div>
+                        <div className="w-16"><input type="number" value={set.c_time} onChange={e => updateSet(exId, setIdx, 'c_time', e.target.value)} disabled={set.completed} className="w-full bg-gray-100 rounded-lg p-2 text-center text-xs font-black outline-none" placeholder="Min"/></div>
+                        <div className="flex-1"><input type="number" value={set.c_incline} onChange={e => updateSet(exId, setIdx, 'c_incline', e.target.value)} disabled={set.completed} className="w-full bg-gray-100 rounded-lg p-2 text-center text-xs font-black outline-none" placeholder={isCinta ? "Incl %" : (isGradas ? "Pisos" : "Nivel")}/></div>
+                        <div className="flex-1"><input type="number" value={set.c_speed} onChange={e => updateSet(exId, setIdx, 'c_speed', e.target.value)} disabled={set.completed} className="w-full bg-gray-100 rounded-lg p-2 text-center text-xs font-black outline-none" placeholder={isCinta ? "Veloc." : "RPM/Niv"}/></div>
+                        <div className="w-14 flex justify-end gap-1">{set.completed && <button onClick={() => deleteSet(exId, setIdx)} className="w-6 bg-red-100 text-red-600 rounded-lg text-xs">🗑️</button>}<button onClick={() => handleComplete(exId, setIdx)} className={`w-8 h-8 rounded-lg font-black text-sm ${set.completed ? 'bg-[#34c759] text-white' : 'bg-[#e5e5ea] text-transparent'}`}>✓</button></div>
+                    </div>
+                );
+            }
+            return (
+                <div className={`flex items-center gap-1.5 py-2 px-3 border-b border-gray-50 ${set.completed ? 'bg-gray-50 opacity-60' : ''}`}>
+                    <div className="w-20"><input type="text" value={set.h_rounds} onChange={e => updateSet(exId, setIdx, 'h_rounds', e.target.value)} disabled={set.completed} className="w-full bg-gray-100 rounded-lg p-2 text-center text-xs font-black outline-none" placeholder="Ej: 10/10"/></div>
+                    <div className="flex-1"><input type="number" value={set.h_int} onChange={e => updateSet(exId, setIdx, 'h_int', e.target.value)} disabled={set.completed} className="w-full bg-gray-100 rounded-lg p-2 text-center text-xs font-black outline-none" placeholder="Vel Máx"/></div>
+                    <div className="flex-1"><input type="number" value={set.h_off} onChange={e => updateSet(exId, setIdx, 'h_off', e.target.value)} disabled={set.completed} className="w-full bg-gray-100 rounded-lg p-2 text-center text-xs font-black outline-none" placeholder="Vel Base"/></div>
+                    <div className="w-14 flex justify-end gap-1">{set.completed && <button onClick={() => deleteSet(exId, setIdx)} className="w-6 bg-red-100 text-red-600 rounded-lg text-xs">🗑️</button>}<button onClick={() => handleComplete(exId, setIdx)} className={`w-8 h-8 rounded-lg font-black text-sm ${set.completed ? 'bg-[#34c759] text-white' : 'bg-[#e5e5ea] text-transparent'}`}>✓</button></div>
+                </div>
+            );
+        }
+
+        function CircuitoBlock({ exId, exData, set, setIdx, handleComplete, deleteSet }) {
+            return (
+                <div className={`p-4 rounded-2xl border ${set.completed ? 'bg-[#34c759]/10 border-[#34c759]' : 'bg-white border-gray-200'}`}>
+                    <div className="text-center mb-4"><span className="text-3xl mb-2 block">🧱</span><h4 className="font-black text-gray-800 uppercase tracking-widest">{exData.name}</h4><p className="text-xs text-gray-500 font-bold mt-1">{exData.notes}</p></div>
+                    <button onClick={() => handleComplete(exId, setIdx)} className={`w-full py-4 rounded-xl font-black text-lg shadow-sm transition-all ${set.completed ? 'bg-[#34c759] text-white' : 'bg-[#007aff] text-white hover:bg-blue-600'}`}>{set.completed ? 'CIRCUITO COMPLETADO ✓' : 'MARCAR RONDA COMPLETADA'}</button>
+                    {set.completed && <div className="text-center mt-3"><button onClick={() => deleteSet(exId, setIdx)} className="text-xs text-red-500 font-bold underline">Deshacer</button></div>}
+                </div>
+            );
+        }
+
+        function App() {
+          const [db, setDb] = useState(null);
+          const [isDbLoading, setIsDbLoading] = useState(true);
+          const [activeTab, setActiveTab] = useState('workout'); 
+          const [activeModule, setActiveModule] = useState('hub'); // Nuevo: Controla si estamos en Inicio, Gym o Agua
+
+          const [subTab, setSubTab] = useState('rutinas'); 
+          const [expandedRoutine, setExpandedRoutine] = useState(null); 
+
+          const [routinesMap, setRoutinesMap] = useState(() => {
+              const savedRoutines = localStorage.getItem('sincroFlexRoutines_v18');
+              return savedRoutines ? JSON.parse(savedRoutines) : initialRoutinesMap;
+          });
+
+          const [globalWorkoutTime, setGlobalWorkoutTime] = useState(0);
+          const [isWorkoutActive, setIsWorkoutActive] = useState(true);
+          const [showProtocolModal, setShowProtocolModal] = useState(false);
+          const [showFinishModal, setShowFinishModal] = useState(false);
+
+          useEffect(() => {
+              const cargarBaseDeDatos = async () => {
+                  if (!window.fsDb) return;
+                  try {
+                      const docRef = window.fsDoc(window.fsDb, "usuarios", "fase2_historial");
+                      const docSnap = await window.fsGetDoc(docRef);
+                      const freshDb = generateInitialDb();
+
+                      if (docSnap.exists()) {
+                          const cloudDb = docSnap.data().historial;
+                          ['esposo', 'esposa'].forEach(u => {
+                              Object.keys(freshDb[u]).forEach(exKey => {
+                                  if (!cloudDb[u][exKey]) cloudDb[u][exKey] = freshDb[u][exKey];
+                                  else cloudDb[u][exKey] = { ...cloudDb[u][exKey], ...freshDb[u][exKey], history: cloudDb[u][exKey].history }; 
+                              });
+                          });
+                          if (!cloudDb.sesiones_completadas) cloudDb.sesiones_completadas = [];
+                          setDb(cloudDb);
+                          await window.fsUpdateDoc(docRef, { historial: cloudDb });
+                      } else {
+                          freshDb.sesiones_completadas = [];
+                          await window.fsSetDoc(docRef, { historial: freshDb });
+                          setDb(freshDb);
+                      }
+                  } catch (error) {
+                      console.error("Error Firebase:", error);
+                      const savedDb = localStorage.getItem('sincroFlexDb_v18');
+                      setDb(savedDb ? JSON.parse(savedDb) : generateInitialDb());
+                  } finally { setIsDbLoading(false); }
+              };
+              window.addEventListener('firebaseIniciado', cargarBaseDeDatos);
+              if (window.fsDb) cargarBaseDeDatos();
+              return () => window.removeEventListener('firebaseIniciado', cargarBaseDeDatos);
+          }, []);
+
+          useEffect(() => { if(db) localStorage.setItem('sincroFlexDb_v18', JSON.stringify(db)); }, [db]);
+
+          const [user, setUser] = useState('esposo');
+          const [activeRoutine, setActiveRoutine] = useState("LUN_AM");
+          const [selectedEx, setSelectedEx] = useState("ext_piernas");
+          const [recordDate, setRecordDate] = useState(new Date().toISOString().split('T')[0]);
+          const [globalUnit, setGlobalUnit] = useState('kg'); 
+          const [globalBar, setGlobalBar] = useState('none'); 
+          
+          const [timerM, setTimerM] = useState(180); const [isActiveM, setIsActiveM] = useState(false);
+          const [timerF, setTimerF] = useState(90); const [isActiveF, setIsActiveF] = useState(false);
+                    // --- ESTADO Y LÓGICA DE HIDRATACIÓN ---
+          const [hydrationMap, setHydrationMap] = useState(() => {
+              const saved = localStorage.getItem('sincroFlex_agua_v1');
+              return saved ? JSON.parse(saved) : { esposa: {}, esposo: {} };
+          });
+
+          const toggleGlass = (index) => {
+              const newMap = { ...hydrationMap };
+              if (!newMap[user]) newMap[user] = {};
+              if (!newMap[user][recordDate]) newMap[user][recordDate] = [];
+              
+              const currentDay = newMap[user][recordDate];
+              if (currentDay.includes(index)) {
+                  newMap[user][recordDate] = currentDay.filter(i => i !== index); // Desmarcar
+              } else {
+                  newMap[user][recordDate] = [...currentDay, index]; // Marcar
+              }
+              setHydrationMap(newMap);
+              localStorage.setItem('sincroFlex_agua_v1', JSON.stringify(newMap));
+          };
+          // --- ESTADO Y LÓGICA DEL CRONOGRAMA DE AGUA ---
+          const defaultSchedule = [
+              { time: "06:00 AM", desc: "Al despertar", highlight: false },
+              { time: "07:00 AM", desc: "Pesas AM", highlight: false },
+              { time: "08:30 AM", desc: "⚡ BATIDO", highlight: true },
+              { time: "09:30 AM", desc: "Desayuno", highlight: false },
+              { time: "10:30 AM", desc: "Oficina", highlight: false },
+              { time: "11:30 AM", desc: "Oficina", highlight: false },
+              { time: "12:30 PM", desc: "Antes de almorzar", highlight: false },
+              { time: "01:30 PM", desc: "Almuerzo", highlight: false },
+              { time: "03:00 PM", desc: "Oficina", highlight: false },
+              { time: "04:30 PM", desc: "Oficina", highlight: false },
+              { time: "05:30 PM", desc: "Pre-entreno PM", highlight: false },
+              { time: "06:30 PM", desc: "Cardio/Pesas PM", highlight: false },
+              { time: "07:30 PM", desc: "⚡ BATIDO", highlight: true },
+              { time: "08:30 PM", desc: "Merienda", highlight: false },
+              { time: "09:30 PM", desc: "Dormir", highlight: false }
+          ];
+
+          const [hydrationSchedule, setHydrationSchedule] = useState(() => {
+              const saved = localStorage.getItem('sincroFlex_agua_rutina_v1');
+              return saved ? JSON.parse(saved) : defaultSchedule;
+          });
+          const [isEditingWater, setIsEditingWater] = useState(false);
+
+          useEffect(() => {
+              localStorage.setItem('sincroFlex_agua_rutina_v1', JSON.stringify(hydrationSchedule));
+          }, [hydrationSchedule]);
+
+          const updateWaterItem = (index, field, value) => {
+              const newSched = [...hydrationSchedule];
+              newSched[index][field] = value;
+              setHydrationSchedule(newSched);
+          };
+          const deleteWaterItem = (index) => {
+              setHydrationSchedule(hydrationSchedule.filter((_, i) => i !== index));
+          };
+          const addWaterItem = () => {
+              setHydrationSchedule([...hydrationSchedule, { time: "00:00", desc: "Nuevo Vaso", highlight: false }]);
+          };
+
+
+
+          const [workoutSetsMap, setWorkoutSetsMap] = useState({});
+          const [rpeModal, setRpeModal] = useState({ isOpen: false, exId: null, setIndex: null, value: 8, weightInfo: '' });
+          const [mentzerModal, setMentzerModal] = useState({ isOpen: false, exId: null, setIndex: null, type: 'mentzer' }); 
+
+          const audioCtxRef = useRef(null);
+
+          const activarAudioIOS = () => {
+              if (!audioCtxRef.current) {
+                  const Ctx = window.AudioContext || window.webkitAudioContext;
+                  audioCtxRef.current = new Ctx();
+              }
+              if (audioCtxRef.current.state === 'suspended') {
+                  audioCtxRef.current.resume();
+              }
+          };
+
+          const reproducirAlarma = () => { 
+              if (!audioCtxRef.current) return;
+              
+              // 1. Intentar vibrar (Bloqueado por Apple en iOS, pero funciona excelente en Android)
+              if ("vibrate" in navigator) {
+                  navigator.vibrate([400, 200, 400, 200, 400]); 
+              }
+
+              // 2. Crear una alarma de TRIPLE pitido fuerte
+              const ctx = audioCtxRef.current;
+              const now = ctx.currentTime;
+              
+              const playBeep = (startTime) => {
+                  const osc = ctx.createOscillator();
+                  const gainNode = ctx.createGain();
+                  osc.connect(gainNode);
+                  gainNode.connect(ctx.destination);
+                  
+                  osc.type = 'square'; // Tono estridente tipo despertador digital
+                  osc.frequency.setValueAtTime(700, startTime); 
+                  
+                  gainNode.gain.setValueAtTime(1, startTime);
+                  gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.4); 
+                  
+                  osc.start(startTime);
+                  osc.stop(startTime + 0.4);
+              };
+
+              // Disparamos 3 pitidos con medio segundo de separación
+              playBeep(now);
+              playBeep(now + 0.5);
+              playBeep(now + 1.0);
+          };
+
+
+          useEffect(() => { let timer = null; if (isWorkoutActive) timer = setInterval(() => setGlobalWorkoutTime(t => t + 1), 1000); return () => clearInterval(timer); }, [isWorkoutActive]);
+          useEffect(() => { let i = null; if (isActiveM && timerM > 0) i = setInterval(() => setTimerM(t => t - 1), 1000); else if (timerM === 0 && isActiveM) { setIsActiveM(false); reproducirAlarma(); } return () => clearInterval(i); }, [isActiveM, timerM]);
+          useEffect(() => { let i = null; if (isActiveF && timerF > 0) i = setInterval(() => setTimerF(t => t - 1), 1000); else if (timerF === 0 && isActiveF) { setIsActiveF(false); reproducirAlarma(); } return () => clearInterval(i); }, [isActiveF, timerF]);
+                    // --- VIGILANTE DE HIDRATACIÓN (ALARMAS) ---
+          useEffect(() => {
+              const revisarHoraAgua = () => {
+                  const ahora = new Date();
+                  const horaActualStr = ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+                  const vasoPendiente = hydrationSchedule.find((item, idx) => {
+                      const yaTomado = hydrationMap[user]?.[recordDate]?.includes(idx);
+                      return item.time === horaActualStr && !yaTomado;
+                  });
+
+                  if (vasoPendiente) {
+                      reproducirAlarma();
+                      document.body.style.backgroundColor = "#0bc5ea";
+                      setTimeout(() => { document.body.style.backgroundColor = "#f2f2f7"; }, 1000);
+
+                      if (Notification.permission === "granted") {
+                          new Notification("💧 Hora de hidratarse", {
+                              body: `Toca beber: ${vasoPendiente.desc}`,
+                              icon: "https://cdn-icons-png.flaticon.com/512/3105/3105807.png"
+                          });
+                      }
+                  }
+              };
+
+              const intervaloAgua = setInterval(revisarHoraAgua, 60000);
+              return () => clearInterval(intervaloAgua);
+          }, [activeModule, hydrationSchedule, hydrationMap, user, recordDate]);
+
+          useEffect(() => {
+              if ("Notification" in window && Notification.permission === "default") {
+                  Notification.requestPermission();
+              }
+          }, []);
+
+          
+          const formatTime = (s) => { const m = Math.floor(s/60); const sec = (s%60).toString().padStart(2,'0'); return `${m}:${sec}`; };
+
+          const getTargetTime = () => activeRoutine.includes('AM') ? '1h 15m' : '1h 00m';
+
+          const calcularTiempoDescanso = (exData, u) => {
+              if (!exData) return 0;
+              if (exData.type === 'core') return 60; 
+              if (exData.supersetGroup && exData.name.includes("A.")) return 0; 
+              if (u === 'esposo') return exData.type === 'mentzer' ? 180 : 120;
+              return 90; 
+          };
+
+          const resetTimerM = (time = 180) => { setIsActiveM(false); setTimerM(time); };
+          const resetTimerF = (time = 90) => { setIsActiveF(false); setTimerF(time); };
+
+          const handleFinishWorkout = async () => { 
+              setIsWorkoutActive(false);
+              const updatedDb = JSON.parse(JSON.stringify(db));
+              if (!updatedDb.sesiones_completadas) updatedDb.sesiones_completadas = [];
+              updatedDb.sesiones_completadas.push({ date: recordDate, routine: routinesMap[activeRoutine].name, durationSeconds: globalWorkoutTime });
+              setDb(updatedDb);
+              if (window.fsDb) { try { await window.fsUpdateDoc(window.fsDoc(window.fsDb, "usuarios", "fase2_historial"), { historial: updatedDb }); } catch (error) {} }
+              setShowFinishModal(false); setGlobalWorkoutTime(0); alert("¡Matanza Terminada! Guardado con éxito.");
+          };
+
+          useEffect(() => {
+              const now = new Date(); const day = now.getDay(); const hour = now.getHours();
+              let detectedRoutine = "LUN_AM"; 
+              if (day === 0 || day === 6) detectedRoutine = "LUN_AM"; 
+              else if (hour >= 15) {
+                  if (day === 1 || day === 2) detectedRoutine = "LUN_MAR_PM"; else if (day === 3) detectedRoutine = "MIE_PM"; else if (day === 4) detectedRoutine = "JUE_PM"; else detectedRoutine = "VIE_PM";
+              } else {
+                  if (day === 1) detectedRoutine = "LUN_AM"; if (day === 2) detectedRoutine = "MAR_AM"; if (day === 3) detectedRoutine = "MIE_AM"; if (day === 4) detectedRoutine = "JUE_AM"; if (day === 5) detectedRoutine = "VIE_PM";
+              }
+              setActiveRoutine(detectedRoutine);
+              const exList = routinesMap[detectedRoutine]?.exercises || []; if (exList.length > 0) setSelectedEx(exList[0]);
+          }, []);
+
+          const currentExDataOriginal = db ? db[user][selectedEx] : null;
+          let exercisesToRender = [];
+          if (currentExDataOriginal && currentExDataOriginal.type !== 'descanso') {
+              if (currentExDataOriginal.supersetGroup) { exercisesToRender = routinesMap[activeRoutine].exercises.filter(id => db[user][id]?.supersetGroup === currentExDataOriginal.supersetGroup); } else { exercisesToRender = [selectedEx]; }
+          }
+
+          useEffect(() => {
+            if (!db || exercisesToRender.length === 0) { setWorkoutSetsMap({}); return; }
+            setWorkoutSetsMap(prevMap => {
+                const newMap = {};
+                exercisesToRender.forEach(exId => {
+                    const exData = db[user][exId]; if (!exData) return;
+                    const todaysHistory = exData.history ? exData.history.filter(h => h.date === recordDate && !h.isSubSet) : [];
+                    const warmups = exData.warmupSets || 0; const working = exData.targetSets || 0; const minSets = working > 0 ? working : 1;
+                    const totalSeries = Math.max((warmups + working), todaysHistory.length > 0 ? todaysHistory.length : minSets);
+                    
+                    let preloadedReps = '';
+                    if(exData.targetRepsObj && !exData.targetRepsObj.includes('Fallo') && !exData.targetRepsObj.includes('Circuito') && !exData.targetRepsObj.includes('m') && !exData.targetRepsObj.includes('s')) {
+                        const match = exData.targetRepsObj.match(/(\d+)(?:\/p)?$/); if(match) preloadedReps = match[1];
+                    }
+                    if(exData.targetRepsObj === 'Fallo') preloadedReps = '1';
+
+                    const newSets = [];
+                                        todaysHistory.forEach((record, index) => {
+                        let savedPlates = record.weightInput !== undefined ? record.weightInput : record.weight;
+                        if(record.weightInput === undefined && record.barId !== 'none' && record.barId !== 'mancuernas') {
+                            const savedBarWeight = BARBELLS[record.barId] ? (record.unit === 'kg' ? BARBELLS[record.barId].weightKg : BARBELLS[record.barId].weightLbs) : 0;
+                            savedPlates = record.weight - savedBarWeight;
+                        }
+
+                        const subSetsHistory = (exData.history || []).filter(h => h.date === recordDate && h.isSubSet && h.parentSetId === index);
+                        const hasDrop = subSetsHistory.some(h => h.technique === 'drop');
+                        const hasPartial = subSetsHistory.some(h => h.technique === 'partial');
+                        let drops = []; let techReps = ''; let technique = null;
+                        if (hasDrop) { technique = 'drop'; drops = subSetsHistory.filter(h => h.technique === 'drop').map(h => ({ weight: h.weight, reps: h.reps })); } 
+                        else if (hasPartial) { technique = 'partial'; techReps = subSetsHistory.find(h => h.technique === 'partial').reps; }
+
+                        newSets.push({ id: index + 1, type: record.setType, completed: true, formPerfect: record.formPerfect, platesInput: exData.equipType === 'band' ? record.bandRes : savedPlates, reps: record.reps, rpe: record.rpe, technique: technique, techReps: techReps, drops: drops, c_machine: record.c_machine || '', c_time: record.c_time || '', c_incline: record.c_incline || '', c_speed: record.c_speed || '', h_format: record.h_format || '', h_rounds: record.h_rounds || '', h_on: record.h_on || '', h_off: record.h_off || '', h_int: record.h_int || '' });
+                    });
+
+                    for (let i = todaysHistory.length; i < totalSeries; i++) {
+                        const prevSet = prevMap[exId]?.[i];
+                        if (prevSet && !prevSet.completed) {
+                            newSets.push(prevSet);
+                        } else {
+                            newSets.push({ id: i + 1, type: i < warmups ? 'warmup' : 'normal', completed: false, formPerfect: true, platesInput: exData.equipType === 'band' ? 'Corporal' : '', reps: exData.equipType === 'cardio_z2' || exData.type === 'core' ? '' : preloadedReps, rpe: '', technique: null, techReps: '', drops: [], c_machine: 'Caminadora', c_time: exData.equipType === 'cardio_z2' ? preloadedReps : '', c_incline: '', c_speed: '', h_format: 'Bici Sprint', h_rounds: exData.equipType === 'cardio_hiit' ? '10' : '', h_on: '', h_off: '', h_int: '' });
+                        }
+                    }
+                    newMap[exId] = newSets;
+                });
+                return newMap;
+            });
+          }, [user, selectedEx, activeRoutine, db, recordDate]);
+
+          const updateSet = (exId, index, field, value) => { const newMap = { ...workoutSetsMap }; newMap[exId][index][field] = value; setWorkoutSetsMap(newMap); };
+          
+          const updateDropSet = (exId, setIndex, dropIndex, field, value) => {
+              const newMap = { ...workoutSetsMap };
+              newMap[exId][setIndex].drops[dropIndex][field] = value;
+              setWorkoutSetsMap(newMap);
+          };
+
+          const toggleSetType = (exId, index) => { if (workoutSetsMap[exId][index].completed) return; const newMap = { ...workoutSetsMap }; newMap[exId][index].type = newMap[exId][index].type === 'normal' ? 'warmup' : 'normal'; setWorkoutSetsMap(newMap); };
+          
+          const addTechnique = (exId, index, techType) => { 
+              if (workoutSetsMap[exId][index].completed) return; 
+              const newMap = { ...workoutSetsMap }; 
+              const currentSet = newMap[exId][index];
+
+              if (techType === 'add_drop') {
+                  currentSet.technique = 'drop';
+                  if (!currentSet.drops) currentSet.drops = [];
+                  currentSet.drops.push({ weight: '', reps: '' }); 
+              } else if (techType === 'remove_drop') {
+                  currentSet.drops.pop();
+                  if (currentSet.drops.length === 0) currentSet.technique = null;
+              } else if (techType === 'partial') {
+                  currentSet.technique = currentSet.technique === 'partial' ? null : 'partial';
+              }
+              setWorkoutSetsMap(newMap); 
+          };
+
+          const handleSetCompletion = async (exId, index, isForceConfirm = false) => {
+            const newMap = { ...workoutSetsMap }; const currentSet = newMap[exId][index]; const isNowCompleted = !currentSet.completed; const exData = db[user][exId];
+            
+            if (isNowCompleted) { for (let i = 0; i < index; i++) { if (!newMap[exId][i].completed) { alert("⚠️ ORDEN ESTRICTO: Para no desarmar tu rutina, debes completar las series en orden. Marca primero la serie de arriba."); return; } } }
+            
+            if (isNowCompleted && !isForceConfirm) {
+                if (exData.equipType === 'pesas' && currentSet.type === 'normal') {
+                    if (currentSet.platesInput === '' || !currentSet.reps || !currentSet.rpe) { alert("Llena Carga, Reps y RPE de la serie principal."); return; }
+                    const valRpe = parseFloat(currentSet.rpe);
+                    if (exData.type === 'mentzer' && valRpe < 10) { setMentzerModal({ isOpen: true, exId, setIndex: index, type: 'mentzer' }); return; }
+                    if ((exData.type === 'arnold' || exData.type === 'salva_hombros') && valRpe >= 10) { alert("⚠️ Recuerda: El método Arnold prioriza volumen y técnica. RPE 9 es ideal para proteger tu bursa. Intenta no llegar al fallo absoluto."); }
+                }
+            }
+            currentSet.completed = isNowCompleted; if(isForceConfirm && mentzerModal.type === 'mentzer') currentSet.rpe = 10; setWorkoutSetsMap(newMap);
+
+            if (isNowCompleted) {
+                const updatedDb = JSON.parse(JSON.stringify(db)); if (!updatedDb[user][exId].history) updatedDb[user][exId].history = [];
+                let newRecord = { date: recordDate, setType: currentSet.type, isSubSet: false };
+                
+                if (exData.equipType === 'pesas' || exData.equipType === 'band' || exData.equipType === 'isometric') {
+                    const bw = (globalBar === 'none' || globalBar === 'mancuernas') ? 0 : (globalUnit === 'kg' ? BARBELLS[globalBar].weightKg : BARBELLS[globalBar].weightLbs);
+                    const rawInput = parseFloat(currentSet.platesInput) || 0;
+                    newRecord.weightInput = rawInput; 
+                    newRecord.weightTotal = exData.equipType === 'band' ? 0 : rawInput + bw; 
+                    newRecord.weight = newRecord.weightTotal; // Mantenemos weight para compatibilidad con gráficos viejos
+                    newRecord.unit = globalUnit; newRecord.barId = globalBar; newRecord.reps = exData.equipType === 'isometric' ? currentSet.reps : parseInt(currentSet.reps); newRecord.rpe = parseFloat(currentSet.rpe) || 0; newRecord.formPerfect = currentSet.formPerfect; if(exData.equipType === 'band') newRecord.bandRes = currentSet.platesInput;
+                } else if (exData.equipType === 'cardio_z2') { newRecord.c_machine = currentSet.c_machine; newRecord.c_time = currentSet.c_time; newRecord.c_incline = currentSet.c_incline; newRecord.c_speed = currentSet.c_speed;
+                } else if (exData.equipType === 'cardio_hiit') { newRecord.h_format = currentSet.h_format; newRecord.h_rounds = currentSet.h_rounds; newRecord.h_on = currentSet.h_on; newRecord.h_off = currentSet.h_off; newRecord.h_int = currentSet.h_int;
+                } else if (exData.type === 'core') { newRecord.reps = 1; }
+                
+                updatedDb[user][exId].history.push(newRecord);
+
+
+                if (currentSet.technique === 'drop' && currentSet.drops) {
+                    currentSet.drops.forEach((drop) => {
+                        updatedDb[user][exId].history.push({ date: recordDate, isSubSet: true, parentSetId: index, technique: 'drop', weight: parseFloat(drop.weight) || 0, reps: drop.reps || 0 });
+                    });
+                } else if (currentSet.technique === 'partial') {
+                    updatedDb[user][exId].history.push({ date: recordDate, isSubSet: true, parentSetId: index, technique: 'partial', weight: newRecord.weight, reps: currentSet.techReps || 0 });
+                }
+                
+                setDb(updatedDb); if (window.fsDb) { try { await window.fsUpdateDoc(window.fsDoc(window.fsDb, "usuarios", "fase2_historial"), { historial: updatedDb }); } catch (error) {} }
+                
+                const isLastExInGroup = exId === exercisesToRender[exercisesToRender.length - 1];
+                if (isLastExInGroup && currentSet.type === 'normal') {
+                    const restT = calcularTiempoDescanso(exData, user);
+                    if (restT > 0) { 
+                        activarAudioIOS();
+                        if (user === 'esposo') { setTimerM(restT); setIsActiveM(true); } 
+                        else { setTimerF(restT); setIsActiveF(true); } 
+                    }
+                }
+
+            }
+          };
+          
+                    const deleteSet = async (exId, index) => {
+              const currentSet = workoutSetsMap[exId][index]; 
+              
+              // Si la serie NO está completada (ej. se añadió por error), la borramos solo de la pantalla
+              if (!currentSet.completed) {
+                  const newMap = { ...workoutSetsMap };
+                  newMap[exId] = newMap[exId].filter((_, i) => i !== index);
+                  setWorkoutSetsMap(newMap);
+                  return;
+              }
+              
+              const exSets = workoutSetsMap[exId]; for (let i = index + 1; i < exSets.length; i++) { if (exSets[i].completed) { alert("⚠️ ORDEN ESTRICTO: Solo puedes borrar la última serie que completaste para no desordenar el historial. Borra primero la de más abajo."); return; } }
+              
+              const updatedDb = JSON.parse(JSON.stringify(db)); let historyArray = updatedDb[user][exId].history;
+
+              
+              let mainCount = 0; let targetMainIdx = -1;
+              for (let i = 0; i < historyArray.length; i++) {
+                  if (historyArray[i].date === recordDate && !historyArray[i].isSubSet) {
+                      if (mainCount === index) { targetMainIdx = i; break; }
+                      mainCount++;
+                  }
+              }
+              if (targetMainIdx > -1) {
+                  updatedDb[user][exId].history = historyArray.filter((h, i) => {
+                      if (i === targetMainIdx) return false; 
+                      if (h.date === recordDate && h.isSubSet && h.parentSetId === index) return false; 
+                      return true;
+                  });
+              }
+              setDb(updatedDb); if (window.fsDb) { try { await window.fsUpdateDoc(window.fsDoc(window.fsDb, "usuarios", "fase2_historial"), { historial: updatedDb }); } catch (error) {} }
+          };
+
+          const addSetRow = (exId) => { const newMap = { ...workoutSetsMap }; newMap[exId] = [...newMap[exId], { id: newMap[exId].length + 1, type: 'normal', platesInput: '', reps: '', rpe: '', completed: false, formPerfect: true }]; setWorkoutSetsMap(newMap); };
+          const openRpeModal = (exId, index, currentRpe, isCardio) => { if(workoutSetsMap[exId][index].completed || isCardio) return; setRpeModal({ isOpen: true, exId, setIndex: index, value: currentRpe || 8, weightInfo: `Registro de Esfuerzo` }); };
+          const confirmRpe = () => { updateSet(rpeModal.exId, rpeModal.setIndex, 'rpe', rpeModal.value); setRpeModal({ isOpen: false, exId: null, setIndex: null, value: 8, weightInfo: '' }); };
+                    const borrarEjercicioHistorial = async (fecha, usuario, exId, e) => {
+              e.stopPropagation();
+              if(!window.confirm(`¿Seguro que quieres borrar los datos de este ejercicio del día ${fecha}?`)) return;
+              const updatedDb = JSON.parse(JSON.stringify(db));
+              if (updatedDb[usuario][exId] && updatedDb[usuario][exId].history) {
+                  updatedDb[usuario][exId].history = updatedDb[usuario][exId].history.filter(h => h.date !== fecha);
+              }
+              setDb(updatedDb); 
+              if (window.fsDb) { try { await window.fsUpdateDoc(window.fsDoc(window.fsDb, "usuarios", "fase2_historial"), { historial: updatedDb }); } catch (error) {} }
+          };
+
+
+          if (isDbLoading) return (<div className="min-h-screen bg-[#f2f2f7] flex flex-col items-center justify-center"><div className="w-12 h-12 border-4 border-[#007aff] border-t-transparent rounded-full animate-spin mb-4"></div><h2 className="text-gray-800 font-bold">Sincronizando SincroFlex...</h2></div>);
+
+          return (
+            <div className="min-h-screen flex justify-center bg-[#1c1c1e]">
+              <div className="w-full max-w-md bg-[#f2f2f7] shadow-2xl flex flex-col min-h-screen relative overflow-hidden">
+                              {/* --- NUEVO HUB CENTRAL (MENÚ DE INICIO) --- */}
+                {activeModule === 'hub' && (
+                    <div className="flex-1 flex flex-col p-6 bg-[#f2f2f7] animate-slide-up">
+                        <header className="mb-8 mt-4">
+                            <h1 className="text-4xl font-black text-gray-900 tracking-tighter">SincroFlex <span className="text-[#007aff]">9.0</span></h1>
+                            <p className="text-gray-500 font-bold uppercase text-[10px] tracking-[3px]">Ecosistema Élite</p>
+                        </header>
+
+                        <div className="grid gap-6">
+                            {/* Tarjeta Gimnasio */}
+                            <button onClick={() => setActiveModule('gym')} className="relative overflow-hidden bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 text-left group active:scale-95 transition-all">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-2xl shadow-inner">🏋️‍♂️</div>
+                                    <span className="text-[10px] font-black bg-blue-600 text-white px-2 py-1 rounded-full uppercase">Activo</span>
+                                </div>
+                                <h3 className="text-xl font-black text-gray-900">Gimnasio</h3>
+                                <p className="text-gray-500 text-xs font-medium mt-1">Control de matanza, RPE y volumen de fuerza.</p>
+                                <div className="absolute right-[-10px] bottom-[-10px] opacity-5 group-hover:opacity-10 transition-opacity">
+                                    <span className="text-8xl">💪</span>
+                                </div>
+                            </button>
+
+                            {/* Tarjeta Hidratación (Activa) */}
+                            <button onClick={() => setActiveModule('agua')} className="relative overflow-hidden bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 text-left group active:scale-95 transition-all">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="w-12 h-12 bg-cyan-50 rounded-2xl flex items-center justify-center text-2xl shadow-inner">💧</div>
+                                    <span className="text-[10px] font-black bg-cyan-600 text-white px-2 py-1 rounded-full uppercase">Activo</span>
+                                </div>
+                                <h3 className="text-xl font-black text-gray-900">Hidratación</h3>
+                                <p className="text-gray-500 text-xs font-medium mt-1">Protocolo de 15 vasos diarios adaptado a la rutina.</p>
+                                <div className="absolute right-[-10px] bottom-[-10px] opacity-5 group-hover:opacity-10 transition-opacity">
+                                    <span className="text-8xl">🚰</span>
+                                </div>
+                            </button>
+
+                            {/* Tarjeta Configuración */}
+                            <div className="bg-gray-800 p-6 rounded-[32px] text-white flex items-center justify-between">
+                                <div>
+                                    <h3 className="font-black text-lg">Ajustes Élite</h3>
+                                    <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Perfil y Firebase</p>
+                                </div>
+                                <button className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-xl">⚙️</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                
+                {showProtocolModal && ( 
+                    <div className="fixed inset-0 z-50 flex flex-col justify-center items-center bg-black/80 backdrop-blur-sm p-4">
+                        <div className="bg-white w-full rounded-3xl p-6 shadow-2xl animate-slide-up max-h-[85vh] overflow-y-auto">
+                            <h3 className="text-2xl font-black text-gray-900 mb-4 uppercase tracking-tight">📖 Protocolo Sincro</h3>
+                            <div className="space-y-3 text-sm font-bold text-gray-700 mb-6">
+                                <p className="bg-gray-50 p-3 rounded-xl border">1️⃣ <span className="text-gray-900 font-black">ORDEN ESTRICTO:</span> Completa y marca las series de arriba hacia abajo. No te saltes las de calentamiento (las amarillas).</p>
+                                <p className="bg-red-50 p-3 rounded-xl border border-red-100">2️⃣ <span className="text-red-600 font-black">MENTZER (🧔):</span> 1 sola serie efectiva. Tienes que llegar al FALLO ABSOLUTO (RPE 10). Si no duele, no sirve.</p>
+                                <p className="bg-blue-50 p-3 rounded-xl border border-blue-100">3️⃣ <span className="text-blue-600 font-black">ARNOLD (🧔):</span> Prioriza volumen y técnica. Quédate en RPE 8.5 - 9. Protege la bursa, evita el fallo absoluto.</p>
+                                <p className="bg-pink-50 p-3 rounded-xl border border-pink-100">4️⃣ <span className="text-[#ff2d55] font-black">ESCULPIDO (👩):</span> Sigue el Tempo estricto. Las Parciales (⚡) y Drop Sets (🩸) son obligatorios donde se indican.</p>
+                            </div>
+                            <button onClick={() => setShowProtocolModal(false)} className="w-full bg-gray-900 text-white font-black py-4 rounded-xl shadow-lg hover:bg-gray-800 transition-colors">Entendido, a matar 🚀</button>
+                        </div>
+                    </div> 
+                )}
+                {showFinishModal && ( <div className="fixed inset-0 z-50 flex flex-col justify-center items-center bg-black/80 backdrop-blur-sm p-6"><div className="bg-white w-full rounded-3xl p-6 shadow-2xl border-4 border-[#34c759] text-center"><h3 className="text-xl font-black mb-2">Finiquitar Sesión</h3><p className="font-bold mb-6">Tiempo: {formatTime(globalWorkoutTime)}</p><button onClick={handleFinishWorkout} className="w-full bg-[#34c759] text-white font-black py-4 rounded-xl">Guardar Sesión</button></div></div> )}
+
+                {rpeModal.isOpen && ( <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm"><div className="bg-white w-full rounded-t-3xl pb-8 pt-6 shadow-2xl animate-slide-up"><div className="text-center mb-6 px-6"><p className="text-6xl font-black mb-2">{rpeModal.value}</p></div><div className="flex overflow-x-auto gap-2 mb-8 px-4">{rpeValues.map(val => <button key={val} onClick={() => setRpeModal({...rpeModal, value: val})} className={`w-14 h-14 rounded-full font-bold text-lg flex-shrink-0 ${rpeModal.value === val ? 'bg-[#007aff] text-white' : 'bg-[#e5e5ea]'}`}>{val}</button>)}</div><div className="px-6"><button onClick={confirmRpe} className="w-full bg-[#34c759] text-white font-black text-xl py-4 rounded-2xl shadow-lg">Confirmar ✓</button></div></div></div> )}
+                
+                {mentzerModal.isOpen && (
+                    <div className="fixed inset-0 z-50 flex flex-col justify-center items-center bg-black/80 backdrop-blur-sm p-6">
+                        <div className="bg-white w-full rounded-3xl p-6 shadow-2xl animate-slide-up text-center border-4 border-red-500">
+                            <span className="text-6xl mb-4 block">⚠️</span><h3 className="text-xl font-black text-gray-900 mb-2 uppercase">Alerta Mentzer</h3>
+                            <p className="text-gray-600 font-bold mb-6">Esta es tu única serie efectiva y exige <span className="text-red-600">Fallo Absoluto (RPE 10)</span>.</p>
+                            <div className="space-y-3"><button onClick={() => setMentzerModal({ isOpen: false, exId: null, setIndex: null, type: 'mentzer' })} className="w-full bg-gray-200 text-gray-800 font-black py-4 rounded-xl">Corregir RPE</button><button onClick={() => { handleSetCompletion(mentzerModal.exId, mentzerModal.setIndex, true); setMentzerModal({ isOpen: false, exId: null, setIndex: null, type: 'mentzer' }); }} className="w-full bg-red-600 text-white font-black py-4 rounded-xl shadow-lg">Sí, fue Fallo (RPE 10)</button></div>
+                        </div>
+                    </div>
+                )}
+                
+
+                                    {/* --- NUEVO MÓDULO: HIDRATACIÓN --- */}
+                {activeModule === 'agua' && (
+                    <div className="flex-1 flex flex-col h-full bg-[#f2f2f7] relative pb-10 animate-slide-up">
+                        {/* Header del Agua */}
+                        <div className="pt-10 pb-4 px-5 bg-white shadow-sm rounded-b-3xl z-10 relative">
+                            <button onClick={() => setActiveModule('hub')} className="absolute top-4 left-4 bg-gray-100 text-gray-800 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">← Volver</button>
+                            <div className="flex justify-between items-center mt-6">
+                                <div>
+                                    <h2 className="text-3xl font-black text-gray-900 tracking-tight">💧 Hidratación</h2>
+                                    <p className="text-xs text-gray-500 font-bold mt-1">Protocolo 15 Vasos (3.75L)</p>
+                                </div>
+                                <input type="date" value={recordDate} onChange={(e) => setRecordDate(e.target.value)} className="bg-gray-100 rounded-xl p-2 text-xs font-bold outline-none"/>
+                            </div>
+                            
+                            <div className="flex bg-[#e5e5ea] rounded-xl p-1 mt-4 shadow-inner">
+                                <button onClick={() => setUser('esposa')} className={`flex-1 py-2 text-[11px] font-black uppercase rounded-lg transition-all ${user === 'esposa' ? 'bg-cyan-500 text-white shadow-md' : 'text-gray-500'}`}>👩 Ella (79kg)</button>
+                                <button onClick={() => setUser('esposo')} className={`flex-1 py-2 text-[11px] font-black uppercase rounded-lg transition-all ${user === 'esposo' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-500'}`}>🧔 Él (83kg)</button>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto px-5 mt-6 hide-scrollbar">
+                            {/* Barra de Progreso Circular (Estilo Apple Watch) */}
+                            {(() => {
+                                const tomados = hydrationMap[user]?.[recordDate]?.length || 0;
+                                const total = hydrationSchedule.length;
+                                const porcentaje = total === 0 ? 0 : Math.min((tomados / total) * 100, 100);
+                                const isComplete = total > 0 && tomados === total;
+                                const circ = 251.2; // 2 * Math.PI * 40
+                                const offset = circ - (porcentaje / 100) * circ;
+                                
+                                return (
+                                    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 mb-6 flex items-center justify-between">
+                                        <div>
+                                            <h3 className="text-4xl font-black text-gray-900">{tomados} <span className="text-xl text-gray-400">/ {total}</span></h3>
+                                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-1">{isComplete ? '¡Meta Alcanzada! 🎉' : 'Vasos (250ml)'}</p>
+                                            <button onClick={() => setIsEditingWater(!isEditingWater)} className={`mt-4 text-[10px] font-black uppercase px-3 py-2 rounded-lg transition-colors shadow-sm ${isEditingWater ? 'bg-cyan-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                                                {isEditingWater ? 'Guardar Cambios ✓' : '✏️ Editar Horarios'}
+                                            </button>
+                                        </div>
+                                        <div className="relative w-24 h-24">
+                                            <svg width="96" height="96" className="transform -rotate-90 drop-shadow-sm">
+                                                <circle cx="48" cy="48" r="40" stroke="#f2f2f7" strokeWidth="10" fill="none" />
+                                                <circle cx="48" cy="48" r="40" stroke={isComplete ? '#34c759' : '#0bc5ea'} strokeWidth="10" fill="none" strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
+                                            </svg>
+                                            <div className="absolute inset-0 flex items-center justify-center text-3xl">
+                                                {isComplete ? '✅' : '💧'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Línea de Tiempo - VISTA INTELIGENTE (MAÑANA / TARDE) */}
+                            <div className="pb-8">
+                                {isEditingWater ? (
+                                    // MODO EDICIÓN (Todo junto para facilitar editar)
+                                    <div className="grid grid-cols-2 gap-3 animate-slide-up">
+                                        {hydrationSchedule.map((item, idx) => (
+                                            <div key={idx} className="col-span-2 flex flex-col gap-2 p-3 bg-white rounded-2xl border border-gray-200 shadow-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={() => deleteWaterItem(idx)} className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex justify-center items-center font-black hover:bg-red-100 transition-colors">🗑</button>
+                                                    <input type="text" value={item.time} onChange={(e) => updateWaterItem(idx, 'time', e.target.value)} className="w-24 bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs font-black text-gray-900 outline-none text-center" placeholder="Ej: 06:00 AM" />
+                                                    <button onClick={() => updateWaterItem(idx, 'highlight', !item.highlight)} className={`w-10 h-10 rounded-xl flex justify-center items-center text-xs font-black transition-colors ${item.highlight ? 'bg-cyan-100 text-cyan-600 border border-cyan-200' : 'bg-gray-100 text-gray-400'}`}>⚡</button>
+                                                </div>
+                                                <input type="text" value={item.desc} onChange={(e) => updateWaterItem(idx, 'desc', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs font-bold text-gray-900 outline-none" placeholder="Descripción breve" />
+                                            </div>
+                                        ))}
+                                        <button onClick={addWaterItem} className="col-span-2 py-4 mt-1 bg-white text-cyan-600 font-black text-sm rounded-2xl border-2 border-dashed border-cyan-200 shadow-sm hover:bg-cyan-50 transition-colors">
+                                            + Añadir Nuevo Vaso
+                                        </button>
+                                    </div>
+                                ) : (
+                                    // MODO ENTRENAMIENTO (Acordeones y Gamificación)
+                                    (() => {
+                                        // Prevención de errores si el día está vacío
+                                        const currentDayMarks = hydrationMap[user]?.[recordDate] || [];
+                                        
+                                        // El cerebro separa automáticamente leyendo "AM" o "PM"
+                                        const amItems = hydrationSchedule.map((item, idx) => ({...item, idx})).filter(item => item.time.toUpperCase().includes('AM'));
+                                        const pmItems = hydrationSchedule.map((item, idx) => ({...item, idx})).filter(item => !item.time.toUpperCase().includes('AM'));
+                                        
+                                        const amCompleted = amItems.length > 0 && amItems.every(item => currentDayMarks.includes(item.idx));
+                                        const pmCompleted = pmItems.length > 0 && pmItems.every(item => currentDayMarks.includes(item.idx));
+                                        
+                                        return (
+                                            <div className="space-y-5 animate-slide-up">
+                                                
+                                                {/* BLOQUE MAÑANA */}
+                                                {amItems.length > 0 && (
+                                                    <div className="bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden">
+                                                        <div className="p-5 bg-gradient-to-r from-blue-50 to-cyan-50 flex justify-between items-center border-b border-blue-100/50">
+                                                            <h3 className="font-black text-blue-900 text-lg flex items-center gap-2">☀️ La Mañana</h3>
+                                                            {amCompleted && <span className="text-[9px] bg-[#28a745] text-white px-2.5 py-1 rounded-full font-black uppercase tracking-widest shadow-sm">Completado ✓</span>}
+                                                        </div>
+                                                        
+                                                        {amCompleted ? (
+                                                            <div className="p-8 text-center bg-[#e2f5e2]/30 flex flex-col items-center">
+                                                                <span className="text-5xl block mb-3 drop-shadow-md">🏆</span>
+                                                                <p className="text-lg font-black text-[#1e6a2b]">¡Mañana súper hidratada!</p>
+                                                                <p className="text-xs font-bold text-[#2ea043] mt-1 mb-4">Felicidades, sigue así en la tarde y noche.</p>
+                                                                <button onClick={() => toggleGlass(amItems[amItems.length - 1].idx)} className="text-[10px] font-black uppercase tracking-wider text-[#1e6a2b] bg-[#28a745]/20 px-4 py-2 rounded-xl hover:bg-[#28a745]/30 transition-colors">
+                                                                    ↩ Reabrir Pestaña
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="p-4 grid grid-cols-2 gap-3 bg-gray-50/30">
+                                                                {amItems.map(item => {
+                                                                    const isChecked = currentDayMarks.includes(item.idx);
+                                                                    return (
+                                                                        <label key={item.idx} className={`flex flex-col justify-center p-4 rounded-[24px] cursor-pointer transition-all border shadow-sm ${isChecked ? 'bg-[#e2f5e2] border-[#28a745]/30' : (item.highlight ? 'bg-cyan-50 border-cyan-100' : 'bg-white border-gray-100')}`}>
+                                                                            <div className="flex items-center justify-between mb-2">
+                                                                                <div className={`text-[11px] font-black ${isChecked ? 'text-[#1e6a2b]' : (item.highlight ? 'text-cyan-700' : 'text-gray-900')}`}>{item.time}</div>
+                                                                                <div className="relative flex items-center justify-center">
+                                                                                    <input type="checkbox" checked={isChecked} onChange={() => toggleGlass(item.idx)} className="peer sr-only" />
+                                                                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${isChecked ? 'bg-[#28a745] border-[#28a745]' : 'bg-transparent border-gray-300'}`}>
+                                                                                        {isChecked && <span className="text-white text-[10px] font-black">✓</span>}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className={`text-[10px] font-bold leading-snug ${isChecked ? 'text-[#2ea043]' : 'text-gray-500'}`}>{item.desc}</div>
+                                                                        </label>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* BLOQUE TARDE Y NOCHE */}
+                                                {pmItems.length > 0 && (
+                                                    <div className="bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden">
+                                                        <div className="p-5 bg-gradient-to-r from-indigo-50 to-purple-50 flex justify-between items-center border-b border-indigo-100/50">
+                                                            <h3 className="font-black text-indigo-900 text-lg flex items-center gap-2">🌙 Tarde y Noche</h3>
+                                                            {pmCompleted && <span className="text-[9px] bg-[#28a745] text-white px-2.5 py-1 rounded-full font-black uppercase tracking-widest shadow-sm">Completado ✓</span>}
+                                                        </div>
+                                                        
+                                                        <div className="p-4 bg-gray-50/30">
+                                                            {/* El Banner de Alerta si la mañana está incompleta */}
+                                                            {!amCompleted && (
+                                                                <div className="mb-4 bg-yellow-50 border border-yellow-200 p-4 rounded-2xl flex items-start gap-3 shadow-sm">
+                                                                    <span className="text-2xl drop-shadow-sm">⚠️</span>
+                                                                    <div>
+                                                                        <p className="text-xs font-black text-yellow-800 uppercase tracking-wide">Atención</p>
+                                                                        <p className="text-[10px] font-bold text-yellow-700 mt-0.5">Aún te faltan vasos de la mañana. ¡Iguálate para mantener el ritmo!</p>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            
+                                                            {pmCompleted ? (
+                                                                <div className="py-6 text-center flex flex-col items-center">
+                                                                    <span className="text-5xl block mb-3 drop-shadow-md">🛌</span>
+                                                                    <p className="text-lg font-black text-indigo-900">¡Día finalizado!</p>
+                                                                    <p className="text-xs font-bold text-indigo-400 mt-1 mb-4">A descansar esos músculos.</p>
+                                                                    <button onClick={() => toggleGlass(pmItems[pmItems.length - 1].idx)} className="text-[10px] font-black uppercase tracking-wider text-indigo-800 bg-indigo-100 px-4 py-2 rounded-xl hover:bg-indigo-200 transition-colors">
+                                                                        ↩ Reabrir Pestaña
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="grid grid-cols-2 gap-3">
+                                                                    {pmItems.map(item => {
+                                                                        const isChecked = currentDayMarks.includes(item.idx);
+                                                                        return (
+                                                                            <label key={item.idx} className={`flex flex-col justify-center p-4 rounded-[24px] cursor-pointer transition-all border shadow-sm ${isChecked ? 'bg-[#e2f5e2] border-[#28a745]/30' : (item.highlight ? 'bg-indigo-50 border-indigo-100' : 'bg-white border-gray-100')}`}>
+                                                                                <div className="flex items-center justify-between mb-2">
+                                                                                    <div className={`text-[11px] font-black ${isChecked ? 'text-[#1e6a2b]' : (item.highlight ? 'text-indigo-700' : 'text-gray-900')}`}>{item.time}</div>
+                                                                                    <div className="relative flex items-center justify-center">
+                                                                                        <input type="checkbox" checked={isChecked} onChange={() => toggleGlass(item.idx)} className="peer sr-only" />
+                                                                                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${isChecked ? 'bg-[#28a745] border-[#28a745]' : 'bg-transparent border-gray-300'}`}>
+                                                                                            {isChecked && <span className="text-white text-[10px] font-black">✓</span>}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className={`text-[10px] font-bold leading-snug ${isChecked ? 'text-[#2ea043]' : 'text-gray-500'}`}>{item.desc}</div>
+                                                                            </label>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                            </div>
+                                        );
+                                    })()
+                                )}
+                            </div>
+
+
+
+                        </div>
+                    </div>
+                )}
+                {
+                    activeModule === 'gym' && (
+                            <>
+                  {/* Botón Flotante para volver al Menú Principal */}
+                  <button onClick={() => setActiveModule('hub')} className="absolute top-4 left-4 z-[60] bg-gray-900/50 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border border-white/20 shadow-lg">
+                    ← Volver al Hub
+                  </button>
+                {activeTab === 'dashboard' && (
+                    <div className="flex-1 p-5 pb-32 overflow-y-auto bg-[#f2f2f7] hide-scrollbar">
+                        <h1 className="text-3xl font-black tracking-tight mb-4">Compendio 4.0</h1>
+                        
+                        <div className="flex bg-gray-200 rounded-xl p-1 mb-5 shadow-inner">
+                            <button onClick={() => setSubTab('rutinas')} className={`flex-1 py-2 text-xs font-black uppercase rounded-lg transition-all ${subTab === 'rutinas' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>📋 Plan</button>
+                            <button onClick={() => setSubTab('biblioteca')} className={`flex-1 py-2 text-xs font-black uppercase rounded-lg transition-all ${subTab === 'biblioteca' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>📚 Biblioteca</button>
+                        </div>
+
+                        {subTab === 'rutinas' && (
+                            <>
+                                <div className="flex bg-white rounded-xl p-1.5 mb-5 shadow-sm border">
+                                    <button onClick={() => setUser('esposa')} className={`flex-1 py-2 text-xs font-black uppercase ${user === 'esposa' ? 'bg-[#ff2d55] text-white shadow-md' : 'text-gray-500'}`}>👩 Esculpido</button>
+                                    <button onClick={() => setUser('esposo')} className={`flex-1 py-2 text-xs font-black uppercase ${user === 'esposo' ? 'bg-[#007aff] text-white shadow-md' : 'text-gray-500'}`}>🧔 Fuerza</button>
+                                </div>
+                                {Object.entries(routinesMap).map(([routineId, routineData]) => (
+                                    <div key={routineId} className="bg-white rounded-2xl mb-4 shadow-sm border overflow-hidden">
+                                        <div onClick={() => setExpandedRoutine(expandedRoutine === routineId ? null : routineId)} className="p-4 flex justify-between items-center font-black cursor-pointer hover:bg-gray-50 transition-colors">
+                                            <h3 className="w-3/4 leading-tight text-sm">{routineData.name}</h3>
+                                            <span className={`text-gray-400 text-xl transform transition-transform ${expandedRoutine === routineId ? 'rotate-180' : ''}`}>▼</span>
+                                        </div>
+                                        
+                                        {expandedRoutine === routineId && (
+                                            <div className="p-4 pt-0 border-t border-gray-50 bg-gray-50/50">
+                                                <div className="flex justify-end mb-3 mt-3">
+                                                    <button onClick={() => { setActiveRoutine(routineId); setSelectedEx(routineData.exercises[0]); setActiveTab('workout'); }} className="bg-gray-900 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md w-full">Entrenar Día ▶</button>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {routineData.exercises.map((exId) => {
+                                                        const ex = db ? db[user][exId] : null;
+                                                        if (!ex) return null;
+                                                        let icon = ex.type === 'descanso' ? "⚡" : (ex.equipType === 'cardio_z2' || ex.equipType === 'cardio_hiit' ? "🔥" : (ex.type === 'core' ? "🧱" : (ex.type === 'rehab' || ex.type === 'salva_hombros' ? "🛠️" : "🏋️")));
+                                                        return (
+                                                            <div key={exId} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col">
+                                                                <div className="flex items-start gap-2 mb-2">
+                                                                    <span className="text-sm mt-0.5">{icon}</span>
+                                                                    <span className="text-xs font-black text-gray-800 leading-tight whitespace-normal break-words">{ex.name}</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center pl-6">
+                                                                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Tempo: <span className="text-gray-900 font-black bg-gray-100 px-1 rounded">{ex.tempo || '-'}</span></span>
+                                                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded border ${user === 'esposa' ? 'text-[#ff2d55] bg-pink-50 border-pink-100' : 'text-[#007aff] bg-blue-50 border-blue-100'}`}>
+                                                                        {ex.targetSets > 0 ? `${ex.warmupSets ? ex.warmupSets + 'A+' : ''}${ex.targetSets}T x ${ex.targetRepsObj || '-'}` : 'N/A'}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </>
+                        )}
+
+                        {subTab === 'biblioteca' && ( <BibliotecaModulo user={user} /> )}
+                    </div>
+                )}
+
+                {activeTab === 'workout' && (
+                    <div className="flex-1 flex flex-col h-full overflow-hidden pb-20 relative">
+                        <div className="w-full bg-[#1c1c1e] text-center py-2 px-4 flex justify-between items-center shadow-md z-30">
+                            <button onClick={() => setShowProtocolModal(true)} className="text-[10px] text-blue-400 font-black uppercase tracking-wider bg-blue-900/30 px-2 py-1.5 rounded-lg border border-blue-800/50">📖 Reglas</button>
+                            <div className="flex flex-col items-center">
+                                <span className="text-sm font-mono font-black text-[#34c759]">⏱️ {formatTime(globalWorkoutTime)}</span>
+                                <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Meta: {getTargetTime()}</span>
+                            </div>
+                            <button onClick={() => setShowFinishModal(true)} className="text-[10px] text-white font-black uppercase tracking-wider bg-[#007aff] px-3 py-1.5 rounded-lg shadow-sm">Terminar</button>
+                        </div>
+
+                        <div className="pt-4 pb-4 px-4 bg-white shadow-sm z-20">
+                            <div className="flex bg-[#e5e5ea] rounded-2xl p-1.5 mb-4 shadow-inner">
+                                <button onClick={() => setUser('esposa')} className={`flex-1 py-3 text-sm font-black uppercase tracking-wider rounded-xl transition-all ${user === 'esposa' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>👩 Esculpido</button>
+                                <button onClick={() => setUser('esposo')} className={`flex-1 py-3 text-sm font-black uppercase tracking-wider rounded-xl transition-all ${user === 'esposo' ? 'bg-[#007aff] text-white shadow-md' : 'text-gray-500'}`}>🧔 Fuerza</button>
+                            </div>
+                            <div className="flex gap-2 mb-3">
+                                <div className="w-1/3"><input type="date" value={recordDate} onChange={(e) => setRecordDate(e.target.value)} className="w-full bg-gray-100 rounded-xl p-3 text-xs font-bold outline-none"/></div>
+                                <div className="w-2/3"><select value={activeRoutine} onChange={e => { setActiveRoutine(e.target.value); setSelectedEx(routinesMap[e.target.value].exercises[0]); }} className="w-full bg-gray-100 custom-select text-xs rounded-xl p-3 font-bold outline-none">{Object.keys(routinesMap).map(k => <option key={k} value={k}>{routinesMap[k].name}</option> )}</select></div>
+                            </div>
+                            <select value={selectedEx} onChange={(e) => setSelectedEx(e.target.value)} className="w-full bg-[#1c1c1e] custom-select text-base text-white font-black p-3 rounded-xl outline-none shadow-lg">
+                                {routinesMap[activeRoutine].exercises.map(exId => <option key={exId} value={exId}>{db && db[user] && db[user][exId] ? db[user][exId].name : exId}</option>)}
+                            </select>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4 hide-scrollbar">
+                            {(!exercisesToRender.length || db[user][exercisesToRender[0]].type === 'descanso') ? (
+                                <div className="p-10 text-center bg-white rounded-3xl border shadow-sm mt-10"><span className="text-6xl mb-4 block">⚡</span><h3 className="text-lg font-black text-gray-800">Día de Descanso</h3></div>
+                            ) : (
+                                <>
+                                    {db[user][exercisesToRender[0]].equipType === 'pesas' && (
+                                        <div className="flex gap-2 mb-4 bg-white p-2 rounded-2xl shadow-sm border">
+                                            <select value={globalUnit} onChange={e => setGlobalUnit(e.target.value)} className="w-24 bg-gray-50 text-xs font-bold rounded-xl p-2.5 outline-none custom-select"><option value="kg">Kg</option><option value="lbs">Lbs</option><option value="placas">Placas</option></select>
+
+                                            <select value={globalBar} onChange={e => setGlobalBar(e.target.value)} className="flex-1 bg-gray-50 text-xs font-bold rounded-xl p-2.5 outline-none custom-select truncate">{Object.entries(BARBELLS).map(([id, bar]) => <option key={id} value={id}>{bar.name}</option>)}</select>
+                                        </div>
+                                    )}
+
+                                    {exercisesToRender.map((exId, idx) => {
+                                        const exData = db[user][exId]; const exSets = workoutSetsMap[exId] || []; const allowAddSet = exData.type !== 'mentzer' || exSets.filter(s => s.type === 'normal').length === 0;
+                                        
+                                        // Buscar info de Biblioteca para el Accesorio
+                                        let bioDetails = null;
+                                        for (const cat in biomecanicaDB.ejercicios) {
+                                            const found = biomecanicaDB.ejercicios[cat].find(e => e.id === exId);
+                                            if (found) { bioDetails = found; break; }
+                                        }
+
+                                        return (
+                                        <div key={exId} className="mb-8">
+                                            <div className="mb-2 flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl shadow-inner border border-gray-200">🏋️</div>
+                                                    <div>
+                                                        <h3 className="text-sm font-black text-[#007aff]">{exData.name}</h3>
+                                                        <p className="text-[10px] text-gray-500 font-bold tracking-wide">{bioDetails ? `🛠️ ${bioDetails.accesorio}` : exData.notes}</p>
+                                                    </div>
+                                                </div>
+                                                <button className="text-gray-400 font-bold text-lg">⋮</button>
+                                            </div>
+
+                                            <div className="w-full bg-white rounded-2xl pb-2 overflow-hidden shadow-sm border border-gray-100">
+                                                {(exData.equipType === 'pesas' || exData.equipType === 'band' || exData.equipType === 'isometric') && exData.type !== 'core' && ( 
+                                                    <div className="flex text-[10px] font-bold text-gray-500 mb-1 pt-3 px-3 uppercase tracking-wider border-b border-gray-50 pb-2">
+                                                        <div className="w-10 text-center">Serie</div>
+                                                        <div className="w-[70px] text-center">Anterior</div>
+                                                        <div className="flex-1 text-center">KG</div>
+                                                        <div className="flex-1 text-center">Reps</div>
+                                                        <div className="w-12 text-center">RPE</div>
+                                                        <div className="w-12 text-center pr-1">✓</div>
+                                                    </div> 
+                                                )}
+
+                                                {(() => {
+                                                    let effectiveCount = 0; let warmupCount = 0;
+                                                    
+                                                    // Buscamos lo que hiciste la sesión pasada (Para la columna ANTERIOR)
+                                                    const pastSessions = exData.history ? exData.history.filter(h => h.date !== recordDate && !h.isSubSet) : [];
+                                                    let setsFromLastDate = [];
+                                                    if (pastSessions.length > 0) {
+                                                        const dates = [...new Set(pastSessions.map(h => h.date))].sort((a,b) => new Date(b) - new Date(a));
+                                                        setsFromLastDate = pastSessions.filter(h => h.date === dates[0]);
+                                                    }
+
+                                                    return exSets.map((set, setIdx) => {
+                                                        if (set.type === 'normal') effectiveCount++; else warmupCount++;
+                                                        const isMultipleWarmups = exData.warmupSets > 1;
+                                                        const visualNum = set.type === 'warmup' ? `A${isMultipleWarmups ? warmupCount : ''}` : effectiveCount;
+                                                        
+                                                        // Extraemos texto para columna Anterior inteligente
+                                                        let prevString = "-";
+                                                        if (setsFromLastDate[setIdx]) {
+                                                            const p = setsFromLastDate[setIdx];
+                                                            const hasBar = p.barId !== 'none' && p.barId !== 'mancuernas';
+                                                            const inputVal = p.weightInput !== undefined ? p.weightInput : (hasBar ? p.weight - (BARBELLS[p.barId] ? (p.unit === 'kg' ? BARBELLS[p.barId].weightKg : BARBELLS[p.barId].weightLbs) : 0) : p.weight);
+                                                            prevString = `${inputVal}${hasBar ? '(+B)' : ''} x ${p.reps}`;
+                                                        }
+
+
+                                                        if (exData.type === 'core') return <CircuitoBlock key={setIdx} set={set} setIdx={setIdx} exId={exId} exData={exData} handleComplete={handleSetCompletion} deleteSet={deleteSet} />;
+                                                        if (exData.equipType.includes('cardio')) return <CardioRow key={setIdx} set={set} setIdx={setIdx} exId={exId} exData={exData} updateSet={updateSet} handleComplete={handleSetCompletion} deleteSet={deleteSet} />;
+                                                        return <FuerzaRow key={setIdx} set={set} setIdx={setIdx} visualNum={visualNum} exId={exId} exData={exData} toggleSetType={toggleSetType} addTechnique={addTechnique} updateSet={updateSet} updateDropSet={updateDropSet} openRpeModal={openRpeModal} handleComplete={handleSetCompletion} deleteSet={deleteSet} globalUnit={globalUnit} globalBar={globalBar} prevString={prevString} />;
+                                                    });
+                                                })()}
+                                                
+                                                {allowAddSet && exData.type !== 'core' && (
+                                                    <div className="px-3 mt-2 mb-1">
+                                                        <button onClick={() => addSetRow(exId)} className="w-full py-2.5 text-sm font-bold text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors">+ Agregar Serie</button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        );
+                                    })}
+                                </>
+                            )}
+                        </div>
+
+                        {/* PANEL FLOTANTE DE DESCANSO (ESTILO PREMIUM TRANSPARENTE Y ULTRA-COMPACTO) */}
+                        {(isActiveM || isActiveF) && (
+                            <div className="fixed bottom-0 w-full max-w-md bg-white/70 backdrop-blur-md text-gray-900 pt-2 px-4 pb-4 z-50 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] animate-slide-up flex flex-col items-center border-t border-gray-100">
+                                <div className="w-10 h-1 bg-gray-300 rounded-full mb-1.5 hover:bg-gray-400 transition-colors"></div>
+                                <span className="text-[10px] font-bold text-[#007aff] mb-0.5 uppercase tracking-widest">⏱️ Descanso: {isActiveM ? 'Él' : 'Ella'}</span>
+                                <span className="text-4xl leading-none font-medium tabular-nums tracking-tighter mb-2">{formatTime(isActiveM ? timerM : timerF)}</span>
+                                <div className="flex gap-2 w-full max-w-sm pb-1">
+                                    <button onClick={() => { activarAudioIOS(); if(isActiveM) setTimerM(p=>Math.max(0,p-15)); else setTimerF(p=>Math.max(0,p-15)); }} className="flex-1 bg-gray-200/60 hover:bg-gray-200 text-gray-900 py-2.5 rounded-xl font-bold text-sm transition-colors">-15</button>
+                                    <button onClick={() => { activarAudioIOS(); if(isActiveM) setTimerM(p=>p+15); else setTimerF(p=>p+15); }} className="flex-1 bg-gray-200/60 hover:bg-gray-200 text-gray-900 py-2.5 rounded-xl font-bold text-sm transition-colors">+15</button>
+                                    <button onClick={() => { activarAudioIOS(); if(isActiveM) {setTimerM(0); setIsActiveM(false);} else {setTimerF(0); setIsActiveF(false);} }} className="flex-[1.5] bg-[#007aff] text-white hover:bg-blue-600 py-2.5 rounded-xl font-black text-sm shadow-lg transition-transform active:scale-95">Omitir</button>
+                                </div>
+                            </div>
+                        )}
+
+                    </div>
+                )}
+                
+                {activeTab === 'stats' && (
+                    <div className="flex-1 p-4 overflow-y-auto pb-32 bg-[#f2f2f7] hide-scrollbar">
+                        <div className="flex items-center justify-between mb-6">
+                            <h1 className="text-3xl font-black text-gray-900 tracking-tight">Historial</h1>
+                            <span className="bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg shadow-sm">Estilo Hevy</span>
+                        </div>
+                        
+                        {(!db || !db.sesiones_completadas || db.sesiones_completadas.length === 0) ? (
+                            <div className="bg-white p-6 rounded-3xl shadow-sm border text-center mt-10"><span className="text-5xl mb-4 block">📭</span><h3 className="font-bold text-gray-800">Aún no hay entrenamientos</h3></div>
+                        ) : (
+                            <div className="space-y-5">
+                                {db.sesiones_completadas.sort((a,b) => new Date(b.date) - new Date(a.date)).map((sesion, idx) => {
+                                    const isExpanded = expandedRoutine === 'hist_'+idx;
+                                    
+                                    const ejerciciosHechos = { esposo: [], esposa: [] };
+                                    ['esposo', 'esposa'].forEach(u => {
+                                        Object.keys(db[u]).forEach(exId => {
+                                            const histDia = db[u][exId].history?.filter(h => h.date === sesion.date && !h.isSubSet) || [];
+                                            if(histDia.length > 0) ejerciciosHechos[u].push({ exId, data: db[u][exId], series: histDia });
+                                        });
+                                    });
+
+                                    return (
+                                        <div key={idx} className="bg-white rounded-3xl shadow-sm border overflow-hidden">
+                                            <div className="p-4 flex justify-between items-center bg-gray-900 text-white cursor-pointer" onClick={() => setExpandedRoutine(isExpanded ? null : 'hist_'+idx)}>
+                                                <div>
+                                                    <h3 className="font-black text-sm uppercase">{sesion.routine}</h3>
+                                                    <p className="text-[11px] text-gray-400 font-bold mt-1">📅 {sesion.date} • ⏱️ {Math.floor(sesion.durationSeconds/60)} min</p>
+                                                </div>
+                                                <span className={`transform transition-transform font-black text-gray-400 ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
+                                            </div>
+                                            {isExpanded && (
+                                                <div className="p-4 bg-gray-50/50">
+                                                    {['esposo', 'esposa'].map(u => ejerciciosHechos[u].length > 0 && (
+                                                        <div key={u} className="mb-6 last:mb-0">
+                                                            <div className="flex items-center gap-2 mb-3">
+                                                                <div className={`w-2 h-6 rounded-full ${u==='esposa'?'bg-[#ff2d55]':'bg-[#007aff]'}`}></div>
+                                                                <h4 className={`text-xs font-black uppercase tracking-wider ${u==='esposa'?'text-[#ff2d55]':'text-[#007aff]'}`}>{u === 'esposa' ? '👩 Esculpido' : '🧔 Fuerza'}</h4>
+                                                            </div>
+                                                            <div className="space-y-4">
+                                                                {ejerciciosHechos[u].map(ej => {
+                                                                    let actMainSet = 0;
+                                                                    return (
+                                                                    <div key={ej.exId} className="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm">
+                                                                        <div className="flex justify-between items-start mb-3">
+                                                                            <p className="text-sm font-black text-gray-900 max-w-[70%]">{ej.data.name}</p>
+                                                                            <button onClick={(e) => borrarEjercicioHistorial(sesion.date, u, ej.exId, e)} className="text-[10px] text-red-500 bg-red-50 hover:bg-red-100 px-2 py-1 rounded font-bold transition-colors">Borrar Ejercicio</button>
+                                                                        </div>
+                                                                        
+                                                                        <div className="flex text-[9px] font-black text-gray-400 uppercase tracking-wider mb-1 px-1">
+                                                                            <div className="w-8 text-center">Set</div>
+                                                                            <div className="flex-1 text-center">Carga</div>
+                                                                            <div className="flex-1 text-center">Reps</div>
+                                                                            <div className="w-10 text-center">RPE</div>
+                                                                        </div>
+                                                                        
+                                                                        <div className="space-y-1">
+                                                                            {ej.series.map((s, sIdx) => {
+                                                                                const isWarmup = s.setType === 'warmup';
+                                                                                if (!isWarmup) actMainSet++;
+                                                                                return (
+                                                                                    <div key={sIdx} className={`flex items-center text-xs font-bold py-1.5 px-1 rounded-lg ${isWarmup ? 'bg-gray-100' : 'bg-gray-50'}`}>
+                                                                                        <div className="w-8 text-center text-gray-500">{isWarmup ? 'A' : actMainSet}</div>
+                                                                                        <div className="flex-1 text-center text-gray-900 flex flex-col items-center justify-center">
+                                                                                            <span>{s.weightInput !== undefined ? s.weightInput : (s.barId !== 'none' && s.barId !== 'mancuernas' ? s.weight - (BARBELLS[s.barId] ? (s.unit === 'kg' ? BARBELLS[s.barId].weightKg : BARBELLS[s.barId].weightLbs) : 0) : s.weight)} {s.unit}</span>
+                                                                                            {(s.barId !== 'none' && s.barId !== 'mancuernas') && <span className="text-[8px] text-gray-400 font-bold uppercase leading-none mt-0.5">Tot: {s.weightTotal || s.weight}</span>}
+                                                                                        </div>
+
+                                                                                        <div className="flex-1 text-center text-gray-900">{s.reps || '-'}</div>
+                                                                                        <div className="w-10 text-center text-gray-500">{s.rpe || '-'}</div>
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                )})}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    <div className="mt-6 pt-4 border-t border-gray-200 flex justify-center">
+                                                        <button onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            if(!window.confirm(`¿Seguro que quieres borrar TODOS los datos de ti y tu esposa del día ${sesion.date}?`)) return;
+                                                            const updatedDb = JSON.parse(JSON.stringify(db));
+                                                            updatedDb.sesiones_completadas = updatedDb.sesiones_completadas.filter(s => s.date !== sesion.date);
+                                                            ['esposo', 'esposa'].forEach(u => { Object.keys(updatedDb[u]).forEach(exId => { if(updatedDb[u][exId].history) { updatedDb[u][exId].history = updatedDb[u][exId].history.filter(h => h.date !== sesion.date); } }); });
+                                                            setDb(updatedDb); if (window.fsDb) { try { await window.fsUpdateDoc(window.fsDoc(window.fsDb, "usuarios", "fase2_historial"), { historial: updatedDb }); } catch (error) {} }
+                                                        }} className="text-[10px] font-black uppercase tracking-wider text-red-600 bg-white border border-red-200 px-4 py-2 rounded-xl shadow-sm hover:bg-red-50">🗑️ Eliminar Sesión Completa</button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                 { /* BARRA INFERIOR (AHORA DENTRO DEL GYM) */ }
+                <div className="fixed bottom-0 w-full max-w-md bg-white/90 backdrop-blur-md border-t flex justify-around pb-8 pt-3 z-40"><button onClick={() => setActiveTab('dashboard')} className={`w-20 ${activeTab === 'dashboard' ? 'text-[#007aff]' : 'text-gray-400'}`}><span className="text-2xl block text-center">📋</span></button><button onClick={() => setActiveTab('workout')} className={`w-20 ${activeTab === 'workout' ? 'text-[#007aff]' : 'text-gray-400'}`}><div className={`w-12 h-12 rounded-full mx-auto -mt-6 flex items-center justify-center text-white ${activeTab === 'workout' ? 'bg-[#007aff]' : 'bg-gray-800'}`}>💪</div></button><button onClick={() => setActiveTab('stats')} className={`w-20 ${activeTab === 'stats' ? 'text-[#007aff]' : 'text-gray-400'}`}><span className="text-2xl block text-center">🔥</span></button></div> <
+                />
+                )
+                }
+                </div> <
+                /div>
+                );
+                }
+               // Registrar el Service Worker para permitir instalación
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('sw.js').catch(() => {});
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
