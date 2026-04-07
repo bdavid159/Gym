@@ -622,23 +622,37 @@
           useEffect(() => { let timer = null; if (isWorkoutActive) timer = setInterval(() => setGlobalWorkoutTime(t => t + 1), 1000); return () => clearInterval(timer); }, [isWorkoutActive]);
           useEffect(() => { let i = null; if (isActiveM && timerM > 0) i = setInterval(() => setTimerM(t => t - 1), 1000); else if (timerM === 0 && isActiveM) { setIsActiveM(false); reproducirAlarma(); } return () => clearInterval(i); }, [isActiveM, timerM]);
           useEffect(() => { let i = null; if (isActiveF && timerF > 0) i = setInterval(() => setTimerF(t => t - 1), 1000); else if (timerF === 0 && isActiveF) { setIsActiveF(false); reproducirAlarma(); } return () => clearInterval(i); }, [isActiveF, timerF]);
-                    // --- VIGILANTE DE HIDRATACIÓN (ALARMAS) ---
+          // --- MOTOR DE TIEMPO (Convierte hora a minutos para cálculo exacto) ---
+          const getMinutos = (timeStr) => {
+              if (!timeStr) return 0;
+              const match = String(timeStr).match(/(\d+):(\d+)\s*(a|p)?/i);
+              if (!match) return 0;
+              let h = parseInt(match[1]);
+              const m = parseInt(match[2]);
+              const isPM = match[3] && match[3].toLowerCase() === 'p';
+              if (isPM && h !== 12) h += 12;
+              if (!isPM && h === 12) h = 0;
+              return h * 60 + m;
+          };
+
+          // --- VIGILANTE DE HIDRATACIÓN (ALARMAS EXACTAS) ---
           useEffect(() => {
               const revisarHoraAgua = () => {
                   const ahora = new Date();
-                  const horaActualStr = ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+                  const minutosActuales = ahora.getHours() * 60 + ahora.getMinutes();
 
                   const vasoPendiente = hydrationSchedule.find((item, idx) => {
                       const yaTomado = hydrationMap[user]?.[recordDate]?.includes(idx);
-                      return item.time === horaActualStr && !yaTomado;
+                      // Verifica si el minuto de la hora actual coincide exactamente con la hora del vaso
+                      return !yaTomado && getMinutos(item.time) === minutosActuales;
                   });
 
                   if (vasoPendiente) {
                       reproducirAlarma();
                       document.body.style.backgroundColor = "#0bc5ea";
                       setTimeout(() => { document.body.style.backgroundColor = "#f2f2f7"; }, 1000);
-
-                      if (Notification.permission === "granted") {
+                      
+                      if ("Notification" in window && Notification.permission === "granted") {
                           new Notification("💧 Hora de hidratarse", {
                               body: `Toca beber: ${vasoPendiente.desc}`,
                               icon: "https://cdn-icons-png.flaticon.com/512/3105/3105807.png"
@@ -647,9 +661,10 @@
                   }
               };
 
-              const intervaloAgua = setInterval(revisarHoraAgua, 60000);
+              const intervaloAgua = setInterval(revisarHoraAgua, 60000); // Revisa cada 60s
               return () => clearInterval(intervaloAgua);
-          }, [activeModule, hydrationSchedule, hydrationMap, user, recordDate]);
+          }, [hydrationSchedule, hydrationMap, user, recordDate]);
+
 
           useEffect(() => {
               if ("Notification" in window && Notification.permission === "default") {
@@ -1034,19 +1049,19 @@
                                 );
                             })()}
 
-                            {/* Línea de Tiempo - VISTA INTELIGENTE (MAÑANA / TARDE) */}
+                             {/* Línea de Tiempo - ORDEN CRONOLÓGICO Y MATEMÁTICO */}
                             <div className="pb-8">
                                 {isEditingWater ? (
-                                    // MODO EDICIÓN (Todo junto para facilitar editar)
+                                    // MODO EDICIÓN
                                     <div className="grid grid-cols-2 gap-3 animate-slide-up">
                                         {hydrationSchedule.map((item, idx) => (
                                             <div key={idx} className="col-span-2 flex flex-col gap-2 p-3 bg-white rounded-2xl border border-gray-200 shadow-sm">
                                                 <div className="flex items-center gap-2">
                                                     <button onClick={() => deleteWaterItem(idx)} className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex justify-center items-center font-black hover:bg-red-100 transition-colors">🗑</button>
-                                                    <input type="text" value={item.time} onChange={(e) => updateWaterItem(idx, 'time', e.target.value)} className="w-24 bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs font-black text-gray-900 outline-none text-center" placeholder="Ej: 06:00 AM" />
+                                                    <input type="text" value={item.time || ''} onChange={(e) => updateWaterItem(idx, 'time', e.target.value)} className="w-24 bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs font-black text-gray-900 outline-none text-center" placeholder="Ej: 06:00 AM" />
                                                     <button onClick={() => updateWaterItem(idx, 'highlight', !item.highlight)} className={`w-10 h-10 rounded-xl flex justify-center items-center text-xs font-black transition-colors ${item.highlight ? 'bg-cyan-100 text-cyan-600 border border-cyan-200' : 'bg-gray-100 text-gray-400'}`}>⚡</button>
                                                 </div>
-                                                <input type="text" value={item.desc} onChange={(e) => updateWaterItem(idx, 'desc', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs font-bold text-gray-900 outline-none" placeholder="Descripción breve" />
+                                                <input type="text" value={item.desc || ''} onChange={(e) => updateWaterItem(idx, 'desc', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs font-bold text-gray-900 outline-none" placeholder="Descripción breve" />
                                             </div>
                                         ))}
                                         <button onClick={addWaterItem} className="col-span-2 py-4 mt-1 bg-white text-cyan-600 font-black text-sm rounded-2xl border-2 border-dashed border-cyan-200 shadow-sm hover:bg-cyan-50 transition-colors">
@@ -1054,14 +1069,17 @@
                                         </button>
                                     </div>
                                 ) : (
-                                    // MODO ENTRENAMIENTO (Acordeones y Gamificación)
+                                    // MODO ENTRENAMIENTO
                                     (() => {
-                                        // Prevención de errores si el día está vacío
                                         const currentDayMarks = hydrationMap[user]?.[recordDate] || [];
                                         
-                                        // El cerebro separa automáticamente leyendo "AM" o "PM"
-                                        const amItems = hydrationSchedule.map((item, idx) => ({...item, idx})).filter(item => item.time.toUpperCase().includes('AM'));
-                                        const pmItems = hydrationSchedule.map((item, idx) => ({...item, idx})).filter(item => !item.time.toUpperCase().includes('AM'));
+                                        // Asignamos índice y ORDENAMOS cronológicamente automáticamente
+                                        const scheduleWithIdx = hydrationSchedule.map((item, idx) => ({ ...item, idx }));
+                                        scheduleWithIdx.sort((a, b) => getMinutos(a.time) - getMinutos(b.time));
+                                        
+                                        // Separamos en Mañana (antes de las 12:00 PM) y Tarde (después)
+                                        const amItems = scheduleWithIdx.filter(item => getMinutos(item.time) < 720);
+                                        const pmItems = scheduleWithIdx.filter(item => getMinutos(item.time) >= 720);
                                         
                                         const amCompleted = amItems.length > 0 && amItems.every(item => currentDayMarks.includes(item.idx));
                                         const pmCompleted = pmItems.length > 0 && pmItems.every(item => currentDayMarks.includes(item.idx));
@@ -1119,7 +1137,6 @@
                                                         </div>
                                                         
                                                         <div className="p-4 bg-gray-50/30">
-                                                            {/* El Banner de Alerta si la mañana está incompleta */}
                                                             {!amCompleted && (
                                                                 <div className="mb-4 bg-yellow-50 border border-yellow-200 p-4 rounded-2xl flex items-start gap-3 shadow-sm">
                                                                     <span className="text-2xl drop-shadow-sm">⚠️</span>
@@ -1163,12 +1180,12 @@
                                                         </div>
                                                     </div>
                                                 )}
-
                                             </div>
                                         );
                                     })()
                                 )}
                             </div>
+
 
 
 
